@@ -48,7 +48,7 @@
       "package": "com.amrsamy.Salaty"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "assets/favicon.png"
     },
     "plugins": [
       [
