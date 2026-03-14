@@ -93,13 +93,24 @@ export default function App() {
 
           // Get location name
           try {
-            let address = await Location.reverseGeocodeAsync({
+            const address = await Location.reverseGeocodeAsync({
               latitude: location.coords.latitude,
               longitude: location.coords.longitude,
             });
             if (address && address.length > 0) {
+              const addr = address[0];
+              const city =
+                addr.city ||
+                addr.subregion ||
+                addr.district ||
+                addr.region ||
+                addr.name ||
+                "";
+              const country = addr.country || "";
               setLocationName(
-                `${address[0].city || address[0].subregion}, ${address[0].country}`,
+                city && country
+                  ? `${city}, ${country}`
+                  : city || country || "Salaty",
               );
             }
           } catch (addrErr) {
@@ -180,6 +191,22 @@ export default function App() {
         lat: location.coords.latitude,
         lon: location.coords.longitude,
       });
+
+      // Also update location name on refresh
+      try {
+        const address = await Location.reverseGeocodeAsync({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        });
+        if (address && address.length > 0) {
+          const addr = address[0];
+          const city = addr.city || addr.subregion || addr.district || addr.region || addr.name || "";
+          const country = addr.country || "";
+          setLocationName(city && country ? `${city}, ${country}` : city || country || "Salaty");
+        }
+      } catch (e) {
+        console.log("Refresh geocode error", e);
+      }
     }
     setRefreshing(false);
   }, []);
@@ -312,24 +339,6 @@ export default function App() {
           <Text style={styles.errorText}>{errorMsg}</Text>
         ) : (
           <>
-            <View
-              style={[
-                styles.locationContainer,
-                isRTL && { flexDirection: "row-reverse" },
-              ]}
-            >
-              <MapPin size={20} color="#c5a35e" />
-              <Text
-                style={[
-                  styles.locationText,
-                  { fontSize: baseFontSize },
-                  isRTL && { marginRight: 8, marginLeft: 0 },
-                ]}
-              >
-                {locationName}
-              </Text>
-            </View>
-
             <View style={styles.dateContainer}>
               <Text style={[styles.dateText, { fontSize: baseFontSize - 2 }]}>
                 {getFormattedGregorianDate(new Date(), currentLang)}
