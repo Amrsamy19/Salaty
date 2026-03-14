@@ -3,6 +3,7 @@ import { audioService } from './audio';
 import { getPrayerTimes } from '../utils/prayerTimes';
 import { Platform } from 'react-native';
 import { subMinutes } from 'date-fns';
+import { settingsService } from './settings';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -50,11 +51,11 @@ export const schedulePrayerNotifications = async (latitude: number, longitude: n
   
   // Schedule a notification for each prayer
   const prayers = [
-    { name: 'Fajr', time: today.fajr },
-    { name: 'Dhuhr', time: today.dhuhr },
-    { name: 'Asr', time: today.asr },
-    { name: 'Maghrib', time: today.maghrib },
-    { name: 'Isha', time: today.isha },
+    { name: 'fajr', time: today.fajr },
+    { name: 'dhuhr', time: today.dhuhr },
+    { name: 'asr', time: today.asr },
+    { name: 'maghrib', time: today.maghrib },
+    { name: 'isha', time: today.isha },
   ];
   
   const now = new Date().getTime();
@@ -69,7 +70,7 @@ export const schedulePrayerNotifications = async (latitude: number, longitude: n
     if (prayerTimeMs > now) {
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: `Time for ${prayer.name}`,
+          title: `Time for ${prayer.name.charAt(0).toUpperCase() + prayer.name.slice(1)}`,
           body: `It is time for ${prayer.name} prayer.`,
           data: { type: 'prayer', prayerName: prayer.name },
         },
@@ -80,21 +81,55 @@ export const schedulePrayerNotifications = async (latitude: number, longitude: n
       });
     }
   }
+
+  // Schedule Azkar
+  const azkar = [
+    { type: 'morning', time: today.fajr ? new Date(today.fajr.getTime() + 20 * 60000) : null, title: 'Morning Azkar', body: 'It is time for Morning Azkar' },
+    { type: 'evening', time: today.asr ? new Date(today.asr.getTime() + 20 * 60000) : null, title: 'Evening Azkar', body: 'It is time for Evening Azkar' },
+  ];
+
+  for (const zkr of azkar) {
+    if (!zkr.time) continue;
+    if (zkr.time.getTime() > now) {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: zkr.title,
+          body: zkr.body,
+          data: { type: 'azkar', azkarType: zkr.type },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: zkr.time,
+        },
+      });
+    }
+  }
 };
 
-export const startListeningForNotifications = () => {
+export const startListeningForNotifications = (onAzkar: (type: 'morning' | 'evening') => void) => {
   const subscription = Notifications.addNotificationReceivedListener(notification => {
-    // Check if it's a prayer notification
     const data = notification.request.content.data;
     if (data?.type === 'prayer') {
-      audioService.playAzan();
+      const settings = settingsService.getSettings();
+      const prayerName = (data.prayerName as string)?.toLowerCase();
+      if (prayerName && settings.enabledAzans[prayerName]) {
+        audioService.playAzan();
+      }
+    } else if (data?.type === 'azkar') {
+      onAzkar(data.azkarType as 'morning' | 'evening');
     }
   });
 
   const responseSubscription = Notifications.addNotificationResponseReceivedListener(response => {
     const data = response.notification.request.content.data;
     if (data?.type === 'prayer') {
-      audioService.playAzan();
+      const settings = settingsService.getSettings();
+      const prayerName = (data.prayerName as string)?.toLowerCase();
+      if (prayerName && settings.enabledAzans[prayerName]) {
+        audioService.playAzan();
+      }
+    } else if (data?.type === 'azkar') {
+      onAzkar(data.azkarType as 'morning' | 'evening');
     }
   });
 
