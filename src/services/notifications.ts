@@ -96,6 +96,9 @@ export const schedulePrayerNotifications = async (latitude: number, longitude: n
           title: zkr.title,
           body: zkr.body,
           data: { type: 'azkar', azkarType: zkr.type },
+          android: {
+            channelId: 'prayer_times',
+          },
         },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.DATE,

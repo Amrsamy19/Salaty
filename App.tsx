@@ -47,7 +47,7 @@ import { getHijriDate, getFormattedGregorianDate } from "./src/utils/date";
 
 export default function App() {
   const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [locationName, setLocationName] = useState("Salaty");
   const [prayers, setPrayers] = useState<any>(null);
   const [isAzanPlaying, setIsAzanPlaying] = useState(false);
@@ -57,7 +57,9 @@ export default function App() {
     null,
   );
   const [settings, setSettings] = useState(settingsService.getSettings());
-  const [activeTab, setActiveTab] = useState<"home" | "qibla" | "tracker" | "azkar" | "settings">("home");
+  const [activeTab, setActiveTab] = useState<
+    "home" | "qibla" | "tracker" | "azkar" | "settings"
+  >("home");
   const [azkarType, setAzkarType] = useState<"morning" | "evening">("morning");
   const [prayerLogs, setPrayerLogs] = useState(trackerService.getLogs());
 
@@ -73,6 +75,14 @@ export default function App() {
     async function startup() {
       try {
         await setupNotifications();
+        // Check if location services are enabled
+        const servicesEnabled = await Location.hasServicesEnabledAsync();
+        if (!servicesEnabled) {
+          if (isMounted)
+            setErrorMsg("Location services are disabled. Please turn on GPS.");
+          setLoading(false);
+          return;
+        }
 
         let { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== "granted") {
@@ -82,10 +92,32 @@ export default function App() {
           return;
         }
 
-        let location = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Low,
-        });
-        if (isMounted) {
+        let location = null;
+        try {
+          // Add a timeout because getCurrentPosition can hang indefinitely on some Android devices
+          const locationPromise = Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Location timeout")), 10000),
+          );
+
+          location = (await Promise.race([
+            locationPromise,
+            timeoutPromise,
+          ])) as Location.LocationObject;
+        } catch (locErr) {
+          console.log("Balanced accuracy failed, trying Low accuracy", locErr);
+          // Fallback to last known or low accuracy if balanced fails
+          location =
+            (await Location.getLastKnownPositionAsync({})) ||
+            (await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.Low,
+            }));
+        }
+
+        if (location && isMounted) {
           setCoords({
             lat: location.coords.latitude,
             lon: location.coords.longitude,
@@ -122,10 +154,15 @@ export default function App() {
             location.coords.longitude,
           );
         }
-      } catch (e) {
+      } catch (e: any) {
         console.error("Startup error", e);
-        if (isMounted)
-          setErrorMsg("Failed to load data. Please check location settings.");
+        if (isMounted) {
+          if (e.message?.includes("Location settings")) {
+            setErrorMsg("Please enable high accuracy location settings.");
+          } else {
+            setErrorMsg("Failed to get location. Please try again.");
+          }
+        }
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -182,31 +219,79 @@ export default function App() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status === "granted") {
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Low,
-      });
-      setCoords({
-        lat: location.coords.latitude,
-        lon: location.coords.longitude,
-      });
-
-      // Also update location name on refresh
-      try {
-        const address = await Location.reverseGeocodeAsync({
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-        });
-        if (address && address.length > 0) {
-          const addr = address[0];
-          const city = addr.city || addr.subregion || addr.district || addr.region || addr.name || "";
-          const country = addr.country || "";
-          setLocationName(city && country ? `${city}, ${country}` : city || country || "Salaty");
-        }
-      } catch (e) {
-        console.log("Refresh geocode error", e);
+    try {
+      const servicesEnabled = await Location.hasServicesEnabledAsync();
+      if (!servicesEnabled) {
+        setErrorMsg("Location services are disabled. Please turn on GPS.");
+        setRefreshing(false);
+        return;
       }
+
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === "granted") {
+        let location = null;
+
+        try {
+          // 1️⃣ Try cached location first (fast + offline)
+          location = await Location.getLastKnownPositionAsync();
+
+          // 2️⃣ If none, request GPS
+          if (!location) {
+            const locationPromise = Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.High,
+            });
+
+            const timeoutPromise = new Promise((_, reject) =>
+              setTimeout(() => reject(new Error("Location timeout")), 15000),
+            );
+
+            location = (await Promise.race([
+              locationPromise,
+              timeoutPromise,
+            ])) as Location.LocationObject;
+          }
+        } catch (err) {
+          console.log("Location error:", err);
+        }
+        if (location) {
+          setCoords({
+            lat: location.coords.latitude,
+            lon: location.coords.longitude,
+          });
+
+          // Update location name
+          try {
+            const address = await Location.reverseGeocodeAsync({
+              latitude: location.coords.latitude,
+              longitude: location.coords.longitude,
+            });
+            if (address && address.length > 0) {
+              const addr = address[0];
+              const city =
+                addr.city ||
+                addr.subregion ||
+                addr.district ||
+                addr.region ||
+                addr.name ||
+                "";
+              const country = addr.country || "";
+              setLocationName(
+                city && country
+                  ? `${city}, ${country}`
+                  : city || country || "Salaty",
+              );
+            }
+          } catch (e) {
+            console.log("Refresh geocode error", e);
+          }
+          setErrorMsg(null); // Clear errors on success
+        }
+      } else {
+        setErrorMsg("Permission to access location was denied");
+      }
+    } catch (err) {
+      console.log("Refresh error", err);
+      setErrorMsg("Failed to update location. Please try again.");
     }
     setRefreshing(false);
   }, []);
@@ -367,21 +452,15 @@ export default function App() {
           color="#c5a35e"
           style={{ marginBottom: 20, opacity: 0.8 }}
         />
-        <Text
-          style={[styles.nextPrayerLabel, { fontSize: baseFontSize - 2 }]}
-        >
+        <Text style={[styles.nextPrayerLabel, { fontSize: baseFontSize - 2 }]}>
           {t.nextPrayer}
         </Text>
-        <Text
-          style={[styles.nextPrayerTitle, { fontSize: baseFontSize + 32 }]}
-        >
+        <Text style={[styles.nextPrayerTitle, { fontSize: baseFontSize + 32 }]}>
           {nextPrayer && nextPrayer !== "none"
             ? t[nextPrayer as keyof typeof t] || nextPrayer
             : t.fajr || "Fajr"}
         </Text>
-        <Text
-          style={[styles.nextPrayerTime, { fontSize: baseFontSize + 16 }]}
-        >
+        <Text style={[styles.nextPrayerTime, { fontSize: baseFontSize + 16 }]}>
           {prayers && nextPrayer && nextPrayer !== "none"
             ? formatTime(prayers[nextPrayer])
             : prayers
@@ -417,91 +496,145 @@ export default function App() {
 
       <View style={styles.mainContent}>
         {activeTab === "home" && renderHome()}
-        
+
         {activeTab === "qibla" && coords && (
-            <QiblaModal 
-                visible={true} 
-                onClose={() => setActiveTab("home")} 
-                latitude={coords.lat} 
-                longitude={coords.lon} 
-                inline={true} 
-            />
+          <QiblaModal
+            visible={true}
+            onClose={() => setActiveTab("home")}
+            latitude={coords.lat}
+            longitude={coords.lon}
+            inline={true}
+          />
         )}
 
         {activeTab === "tracker" && (
-            <TrackerModal 
-                visible={true} 
-                onClose={() => setActiveTab("home")} 
-                inline={true} 
-            />
+          <TrackerModal
+            visible={true}
+            onClose={() => setActiveTab("home")}
+            inline={true}
+          />
         )}
 
         {activeTab === "azkar" && (
-            <AzkarModal 
-                visible={true} 
-                onClose={() => setActiveTab("home")} 
-                type={azkarType} 
-                inline={true}
-                onTypeChange={(type) => setAzkarType(type)}
-            />
+          <AzkarModal
+            visible={true}
+            onClose={() => setActiveTab("home")}
+            type={azkarType}
+            inline={true}
+            onTypeChange={(type) => setAzkarType(type)}
+          />
         )}
 
         {activeTab === "settings" && (
-            <SettingsModal 
-                visible={true} 
-                onClose={() => setActiveTab("home")} 
-                inline={true} 
-            />
+          <SettingsModal
+            visible={true}
+            onClose={() => setActiveTab("home")}
+            inline={true}
+          />
         )}
       </View>
 
       {/* Bottom Tab Bar */}
       <View style={[styles.tabBar, isRTL && { flexDirection: "row-reverse" }]}>
-        <TouchableOpacity 
-            style={styles.tabItem} 
-            onPress={() => setActiveTab("home")}
+        <TouchableOpacity
+          style={styles.tabItem}
+          onPress={() => setActiveTab("home")}
         >
-            <Calendar size={22} color={activeTab === "home" ? "#c5a35e" : "#64748b"} />
-            <Text style={[styles.tabLabel, activeTab === "home" && styles.tabLabelActive]}>{t.prayers}</Text>
+          <Calendar
+            size={22}
+            color={activeTab === "home" ? "#c5a35e" : "#64748b"}
+          />
+          <Text
+            style={[
+              styles.tabLabel,
+              activeTab === "home" && styles.tabLabelActive,
+            ]}
+          >
+            {t.prayers}
+          </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-            style={styles.tabItem} 
-            onPress={() => setActiveTab("qibla")}
+        <TouchableOpacity
+          style={styles.tabItem}
+          onPress={() => setActiveTab("qibla")}
         >
-            <CompassIcon size={22} color={activeTab === "qibla" ? "#c5a35e" : "#64748b"} />
-            <Text style={[styles.tabLabel, activeTab === "qibla" && styles.tabLabelActive]}>{t.qibla}</Text>
+          <CompassIcon
+            size={22}
+            color={activeTab === "qibla" ? "#c5a35e" : "#64748b"}
+          />
+          <Text
+            style={[
+              styles.tabLabel,
+              activeTab === "qibla" && styles.tabLabelActive,
+            ]}
+          >
+            {t.qibla}
+          </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-            style={styles.tabItem} 
-            onPress={() => {
-                const hour = new Date().getHours();
-                setAzkarType(hour < 15 ? "morning" : "evening");
-                setActiveTab("azkar");
-            }}
+        <TouchableOpacity
+          style={styles.tabItem}
+          onPress={() => {
+            const hour = new Date().getHours();
+            setAzkarType(hour < 15 ? "morning" : "evening");
+            setActiveTab("azkar");
+          }}
         >
-            {azkarType === "morning" ? 
-                <Sun size={22} color={activeTab === "azkar" ? "#FBBF24" : "#64748b"} /> : 
-                <Moon size={22} color={activeTab === "azkar" ? "#e2d1a8" : "#64748b"} />
-            }
-            <Text style={[styles.tabLabel, activeTab === "azkar" && styles.tabLabelActive]}>{t.morningAzkar.split(' ')[0]}</Text>
+          {azkarType === "morning" ? (
+            <Sun
+              size={22}
+              color={activeTab === "azkar" ? "#FBBF24" : "#64748b"}
+            />
+          ) : (
+            <Moon
+              size={22}
+              color={activeTab === "azkar" ? "#e2d1a8" : "#64748b"}
+            />
+          )}
+          <Text
+            style={[
+              styles.tabLabel,
+              activeTab === "azkar" && styles.tabLabelActive,
+            ]}
+          >
+            {t.morningAzkar.split(" ")[0]}
+          </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-            style={styles.tabItem} 
-            onPress={() => setActiveTab("tracker")}
+        <TouchableOpacity
+          style={styles.tabItem}
+          onPress={() => setActiveTab("tracker")}
         >
-            <ClipboardList size={22} color={activeTab === "tracker" ? "#c5a35e" : "#64748b"} />
-            <Text style={[styles.tabLabel, activeTab === "tracker" && styles.tabLabelActive]}>{t.trackerHistory.split(' ')[0]}</Text>
+          <ClipboardList
+            size={22}
+            color={activeTab === "tracker" ? "#c5a35e" : "#64748b"}
+          />
+          <Text
+            style={[
+              styles.tabLabel,
+              activeTab === "tracker" && styles.tabLabelActive,
+            ]}
+          >
+            {t.trackerHistory.split(" ")[0]}
+          </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-            style={styles.tabItem} 
-            onPress={() => setActiveTab("settings")}
+        <TouchableOpacity
+          style={styles.tabItem}
+          onPress={() => setActiveTab("settings")}
         >
-            <SettingsIcon size={22} color={activeTab === "settings" ? "#c5a35e" : "#64748b"} />
-            <Text style={[styles.tabLabel, activeTab === "settings" && styles.tabLabelActive]}>{t.settings}</Text>
+          <SettingsIcon
+            size={22}
+            color={activeTab === "settings" ? "#c5a35e" : "#64748b"}
+          />
+          <Text
+            style={[
+              styles.tabLabel,
+              activeTab === "settings" && styles.tabLabelActive,
+            ]}
+          >
+            {t.settings}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -514,7 +647,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#061026",
-    paddingTop: Platform.OS === 'ios' ? 0 : 60,
+    paddingTop: Platform.OS === "ios" ? 0 : 60,
   },
   mainContent: {
     flex: 1,
@@ -532,7 +665,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "bold",
     letterSpacing: 2,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
   tabBar: {
     flexDirection: "row",
