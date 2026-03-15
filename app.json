@@ -14,7 +14,11 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "UIBackgroundModes": ["audio", "fetch", "remote-notification"]
+        "UIBackgroundModes": [
+          "audio",
+          "fetch",
+          "remote-notification"
+        ]
       }
     },
     "android": {
@@ -55,6 +59,11 @@
         }
       ],
       "expo-av"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "54ba3981-3d1d-427b-b3be-546fa1453ad5"
+      }
+    }
   }
 }

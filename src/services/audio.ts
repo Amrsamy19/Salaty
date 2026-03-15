@@ -1,4 +1,5 @@
 import { Audio } from 'expo-av';
+import { VolumeManager } from 'react-native-volume-manager';
 
 class AudioService {
   private sound: Audio.Sound | null = null;
@@ -42,8 +43,19 @@ class AudioService {
 
   public async playAzan() {
     try {
+      if (this.isPlaying && !this.isPreview) {
+        return; // Already playing Azan, don't restart
+      }
+
       if (this.sound) {
         await this.stopAzan();
+      }
+
+      // Maximize volume for Azan
+      try {
+        await VolumeManager.setVolume(1.0, { showUI: false });
+      } catch (volError) {
+        console.error('Error sets volume:', volError);
       }
 
       const { settingsService } = require('./settings');
@@ -77,6 +89,13 @@ class AudioService {
     try {
       if (this.sound) {
         await this.stopAzan();
+      }
+
+      // Set moderate volume for preview
+      try {
+        await VolumeManager.setVolume(0.8, { showUI: true });
+      } catch (volError) {
+        console.error('Error setting volume for preview:', volError);
       }
 
       const selectedAzan = this.getAzanFile(soundName);
