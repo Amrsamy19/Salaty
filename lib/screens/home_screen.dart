@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:adhan/adhan.dart';
+import 'package:hijri/hijri_calendar.dart';
 import '../providers/prayer_provider.dart';
 import 'qibla_screen.dart';
 import 'settings_screen.dart';
@@ -124,21 +125,53 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
 
+    // Build Hijri date string
+    final hijri = HijriCalendar.now();
+    final hijriMonths = [
+      'محرم', 'صفر', 'ربيع الأول', 'ربيع الآخر',
+      'جمادى الأولى', 'جمادى الآخرة', 'رجب', 'شعبان',
+      'رمضان', 'شوال', 'ذو القعدة', 'ذو الحجة',
+    ];
+    final hijriStr = '${hijri.hDay} ${hijriMonths[hijri.hMonth - 1]} ${hijri.hYear} هـ';
+    final gregorianStr = DateFormat('EEEE، d MMMM y', 'ar').format(DateTime.now());
+
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 24.0),
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
         child: Column(
           children: [
-            Image.asset(
-              'assets/images/icon.png',
-              height: 100 * fs,
+            // Date card
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0D1B3E),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFC5A35E).withOpacity(0.18)),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    hijriStr,
+                    style: TextStyle(
+                      color: const Color(0xFFC5A35E),
+                      fontSize: 20 * fs,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    gregorianStr,
+                    style: TextStyle(
+                      color: const Color(0xFFE2D1A8).withOpacity(0.5),
+                      fontSize: 13 * fs,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 20),
-            Text(
-              DateFormat('EEEE, d MMMM', 'ar').format(DateTime.now()),
-              style: TextStyle(color: const Color(0xFFE2D1A8).withOpacity(0.6), fontSize: 18 * fs),
-            ),
-            const SizedBox(height: 15),
+            const SizedBox(height: 14),
+            // Countdown card
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),

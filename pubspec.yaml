@@ -48,6 +48,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   audioplayers: ^6.6.0
+  hijri: ^3.0.0
 
 dev_dependencies:
   flutter_test:
