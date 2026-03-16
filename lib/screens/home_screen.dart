@@ -51,11 +51,18 @@ class _HomeScreenState extends State<HomeScreen> {
         elevation: 0,
         actions: [
           IconButton(
+            icon: const Icon(Icons.explore, color: gold),
+            tooltip: 'القبلة',
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const QiblaScreen())),
+          ),
+          IconButton(
             icon: const Icon(Icons.history, color: gold),
+            tooltip: 'السجل',
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TrackerScreen())),
           ),
           IconButton(
             icon: const Icon(Icons.settings, color: gold),
+            tooltip: 'الإعدادات',
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
           ),
         ],
@@ -80,7 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     _buildHeader(context, prayerProvider, fs),
                     _buildPrayerTimesList(prayerProvider, fs),
                     _buildTrackerSection(prayerProvider, fs),
-                    _buildQiblaButton(context, fs),
+                    const SliverToBoxAdapter(child: SizedBox(height: 30)),
                   ],
                 ),
         ),
@@ -318,28 +325,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildQiblaButton(BuildContext context, double fs) {
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: ElevatedButton.icon(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const QiblaScreen()),
-            );
-          },
-          icon: const Icon(Icons.compass_calibration, color: Colors.black),
-          label: Text('اتجاه القبلة', style: TextStyle(color: Colors.black, fontSize: 18 * fs)),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.amber,
-            padding: const EdgeInsets.all(20),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          ),
-        ),
-      ),
-    );
-  }
+
 
   String _getPrayerName(Prayer prayer) {
     switch (prayer) {
