@@ -86,4 +86,143 @@ class TrackerScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _statItem('$pct%', 'نسبة الال
+              _statItem('$pct%', 'نسبة الالتزام'),
+              _statDivider(),
+              _statItem('$totalDone/$totalPossible', 'الصلوات المؤداة'),
+              _statDivider(),
+              _statItem('$perfectDays', 'أيام مكتملة'),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Progress bar
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: LinearProgressIndicator(
+              value: totalPossible > 0 ? totalDone / totalPossible : 0,
+              backgroundColor: _slate.withOpacity(0.2),
+              valueColor: const AlwaysStoppedAnimation<Color>(_gold),
+              minHeight: 8,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statItem(String value, String label) {
+    return Column(
+      children: [
+        Text(value, style: const TextStyle(color: _cream, fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        Text(label, style: const TextStyle(color: _slate, fontSize: 11)),
+      ],
+    );
+  }
+
+  Widget _statDivider() {
+    return Container(width: 1, height: 36, color: _gold.withOpacity(0.2));
+  }
+
+  Widget _buildDayCard(BuildContext context, TrackerModel day) {
+    final prayers = day.prayerStatus;
+    final total = prayers.length;
+    final completed = prayers.values.where((v) => v).length;
+    final isPerfect = completed == total;
+    final isToday = day.date == DateTime.now().toIso8601String().substring(0, 10);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: _bg2,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isToday ? _gold.withOpacity(0.5) : _gold.withOpacity(0.12),
+          width: isToday ? 1.5 : 1,
+        ),
+      ),
+      child: ExpansionTile(
+        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        childrenPadding: EdgeInsets.zero,
+        iconColor: _gold,
+        collapsedIconColor: _slate,
+        title: Row(
+          children: [
+            if (isToday)
+              Container(
+                margin: const EdgeInsets.only(left: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: _faint,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Text('اليوم', style: TextStyle(color: _gold, fontSize: 11)),
+              ),
+            Expanded(
+              child: Text(
+                DateFormat('EEEE، d MMMM', 'ar').format(DateTime.parse(day.date)),
+                style: const TextStyle(color: _cream, fontSize: 15, fontWeight: FontWeight.bold),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: isPerfect ? Colors.green.withOpacity(0.2) : _faint,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: isPerfect ? Colors.green.withOpacity(0.4) : _gold.withOpacity(0.3)),
+              ),
+              child: Text(
+                '$completed / $total',
+                style: TextStyle(
+                  color: isPerfect ? Colors.green : _gold,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ],
+        ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(
+              children: [
+                const Divider(color: Color(0x33C5A35E), height: 1),
+                const SizedBox(height: 12),
+                // Mini progress bar per day
+                Row(
+                  children: List.generate(total, (i) {
+                    final prayerName = prayers.keys.elementAt(i);
+                    final isDone = prayers[prayerName] ?? false;
+                    return Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(left: i < total - 1 ? 4 : 0),
+                        child: Column(
+                          children: [
+                            Icon(
+                              isDone ? Icons.check_circle_rounded : Icons.circle_outlined,
+                              color: isDone ? Colors.green : _slate,
+                              size: 22,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              prayerName,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: isDone ? Colors.green : _slate,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
