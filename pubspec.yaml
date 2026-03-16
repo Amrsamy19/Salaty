@@ -49,6 +49,7 @@ dependencies:
     sdk: flutter
   audioplayers: ^6.6.0
   hijri: ^3.0.0
+  volume_controller: ^3.4.2
 
 dev_dependencies:
   flutter_test:

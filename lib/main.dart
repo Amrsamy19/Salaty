@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:volume_controller/volume_controller.dart';
 import 'providers/prayer_provider.dart';
 import 'screens/home_screen.dart';
 import 'l10n/app_localizations.dart';
@@ -10,6 +12,17 @@ import 'l10n/app_localizations.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('ar', null);
+
+  // Check if launched by full-screen intent/notification
+  final FlutterLocalNotificationsPlugin plugin = FlutterLocalNotificationsPlugin();
+  final details = await plugin.getNotificationAppLaunchDetails();
+  if (details?.didNotificationLaunchApp ?? false) {
+    try {
+      VolumeController.instance.showSystemUI = false;
+      await VolumeController.instance.setVolume(0.5);
+    } catch (_) {} // volume controller might throw if unsupported
+  }
+
   runApp(
     MultiProvider(
       providers: [
