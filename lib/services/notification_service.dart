@@ -30,11 +30,13 @@ class NotificationService {
     await flutterLocalNotificationsPlugin.cancelAll();
 
     final prayers = [
-      {'name': 'الفجر', 'time': prayerTimes.fajr},
-      {'name': 'الظهر', 'time': prayerTimes.dhuhr},
-      {'name': 'العصر', 'time': prayerTimes.asr},
-      {'name': 'المغرب', 'time': prayerTimes.maghrib},
-      {'name': 'العشاء', 'time': prayerTimes.isha},
+      {'name': 'الفجر', 'time': prayerTimes.fajr, 'isAzkar': false},
+      {'name': 'أذكار الصباح', 'time': prayerTimes.fajr.add(const Duration(minutes: 45)), 'isAzkar': true},
+      {'name': 'الظهر', 'time': prayerTimes.dhuhr, 'isAzkar': false},
+      {'name': 'العصر', 'time': prayerTimes.asr, 'isAzkar': false},
+      {'name': 'أذكار المساء', 'time': prayerTimes.asr.add(const Duration(minutes: 30)), 'isAzkar': true},
+      {'name': 'المغرب', 'time': prayerTimes.maghrib, 'isAzkar': false},
+      {'name': 'العشاء', 'time': prayerTimes.isha, 'isAzkar': false},
     ];
 
     for (var i = 0; i < prayers.length; i++) {
@@ -44,22 +46,23 @@ class NotificationService {
       if (!(enabledPrayers[prayerName] ?? true)) continue;
 
       final DateTime time = prayer['time'] as DateTime;
-      
+      final bool isAzkar = (prayer['isAzkar'] as bool?) ?? false;
+
       if (time.isAfter(DateTime.now())) {
         await flutterLocalNotificationsPlugin.zonedSchedule(
           id: i,
-          title: 'حان الآن موعد صلاة $prayerName',
-          body: 'أقم صلاتك يا عبد الله',
+          title: isAzkar ? prayerName : 'حان الآن موعد صلاة $prayerName',
+          body: isAzkar ? 'لا تنس ذكر الله' : 'أقم صلاتك يا عبد الله',
           scheduledDate: tz.TZDateTime.from(time, tz.local),
           notificationDetails: NotificationDetails(
             android: AndroidNotificationDetails(
-              'prayer_channel_custom_v2',
-              'تنبيهات الصلاة',
-              channelDescription: 'تنبيهات مواقيت الصلاة والأذان',
+              isAzkar ? 'azkar_channel' : 'prayer_channel_custom_v2',
+              isAzkar ? 'تنبيهات الأذكار' : 'تنبيهات الصلاة',
+              channelDescription: isAzkar ? 'تنبيهات أذكار الصباح والمساء' : 'تنبيهات مواقيت الصلاة والأذان',
               importance: Importance.max,
               priority: Priority.high,
               playSound: true,
-              sound: RawResourceAndroidNotificationSound(azanSound.split('.').first),
+              sound: isAzkar ? null : RawResourceAndroidNotificationSound(azanSound.split('.').first),
             ),
           ),
           androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,

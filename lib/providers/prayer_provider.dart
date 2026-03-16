@@ -36,9 +36,11 @@ class PrayerProvider with ChangeNotifier {
     'العصر': true,
     'المغرب': true,
     'العشاء': true,
+    'أذكار الصباح': true,
+    'أذكار المساء': true,
   };
   Color _primaryColor = brandGold;
-  Color _accentColor  = brandGold;
+  final Color _accentColor  = brandGold;
 
   // Getters
   Position? get currentPosition => _currentPosition;
@@ -73,6 +75,8 @@ class PrayerProvider with ChangeNotifier {
       _selectedAzanSound = settings['azanSound'] ?? 'makah.mp3';
       if (settings['notifMap'] != null) {
         _notifMap = Map<String, bool>.from(settings['notifMap']);
+        if (!_notifMap.containsKey('أذكار الصباح')) _notifMap['أذكار الصباح'] = true;
+        if (!_notifMap.containsKey('أذكار المساء')) _notifMap['أذكار المساء'] = true;
       }
       if (settings['primaryColor'] != null) {
         _primaryColor = Color(settings['primaryColor']);

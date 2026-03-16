@@ -64,7 +64,10 @@ class MyApp extends StatelessWidget {
               foregroundColor: textColor,
               elevation: 0,
             ),
-            textTheme: GoogleFonts.amiriTextTheme(ThemeData.dark().textTheme).apply(
+            textTheme: (provider.locale.languageCode == 'ar'
+                    ? GoogleFonts.cairoTextTheme(ThemeData.dark().textTheme)
+                    : GoogleFonts.outfitTextTheme(ThemeData.dark().textTheme))
+                .apply(
               bodyColor: textColor,
               displayColor: textColor,
             ),

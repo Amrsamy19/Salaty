@@ -109,7 +109,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       decoration: BoxDecoration(
         color: _bg2,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _gold.withOpacity(0.18)),
+        border: Border.all(color: _gold.withValues(alpha: 0.18)),
       ),
       child: child,
     );
@@ -162,7 +162,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               if (!isLast)
-                Divider(height: 1, color: _gold.withOpacity(0.1)),
+                Divider(height: 1, color: _gold.withValues(alpha: 0.1)),
             ],
           );
         }),
@@ -185,7 +185,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   decoration: BoxDecoration(
                     color: _faint,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: _gold.withOpacity(0.3)),
+                    border: Border.all(color: _gold.withValues(alpha: 0.3)),
                   ),
                   child: Text(
                     '${(provider.fontSizeMultiplier * 100).toInt()}%',
@@ -197,7 +197,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             SliderTheme(
               data: SliderTheme.of(context).copyWith(
                 activeTrackColor: _gold,
-                inactiveTrackColor: _slate.withOpacity(0.3),
+                inactiveTrackColor: _slate.withValues(alpha: 0.3),
                 thumbColor: _gold,
                 overlayColor: _faint,
               ),
@@ -284,12 +284,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             shape: BoxShape.circle,
                             color: isPlaying ? _faint : _bg,
                             border: Border.all(
-                              color: isPlaying ? _gold : _gold.withOpacity(0.3),
+                              color: isPlaying ? _gold : _gold.withValues(alpha: 0.3),
                             ),
                           ),
                           child: Icon(
                             isPlaying ? Icons.stop_rounded : Icons.play_arrow_rounded,
-                            color: isPlaying ? _gold : _cream.withOpacity(0.6),
+                            color: isPlaying ? _gold : _cream.withValues(alpha: 0.6),
                             size: 20,
                           ),
                         ),
@@ -298,7 +298,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
               ),
-              if (!isLast) Divider(height: 1, color: _gold.withOpacity(0.1)),
+              if (!isLast) Divider(height: 1, color: _gold.withValues(alpha: 0.1)),
             ],
           );
         }),
@@ -343,8 +343,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         height: 26,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(13),
-                          color: isEnabled ? _gold : _slate.withOpacity(0.3),
-                          border: Border.all(color: isEnabled ? _gold : _slate.withOpacity(0.4)),
+                          color: isEnabled ? _gold : _slate.withValues(alpha: 0.3),
+                          border: Border.all(color: isEnabled ? _gold : _slate.withValues(alpha: 0.4)),
                         ),
                         child: AnimatedAlign(
                           duration: const Duration(milliseconds: 200),
@@ -366,7 +366,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
                 ),
               ),
-              if (!isLast) Divider(height: 1, color: _gold.withOpacity(0.1)),
+              if (!isLast) Divider(height: 1, color: _gold.withValues(alpha: 0.1)),
             ],
           );
         }),

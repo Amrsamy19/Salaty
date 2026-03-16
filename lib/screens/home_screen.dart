@@ -9,6 +9,7 @@ import '../l10n/app_localizations.dart';
 import 'qibla_screen.dart';
 import 'settings_screen.dart';
 import 'tracker_screen.dart';
+import 'azkar_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -52,6 +53,11 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: bg,
         elevation: 0,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.book, color: gold),
+            tooltip: l.azkar,
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AzkarScreen())),
+          ),
           IconButton(
             icon: const Icon(Icons.explore, color: gold),
             tooltip: l.qibla,

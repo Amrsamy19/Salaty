@@ -17,6 +17,7 @@ class AppLocalizations {
   String get timeRemaining   => isAr ? 'متبقي على الموعد'         : 'Time Remaining';
   String get prayerTracker   => isAr ? 'متتبع الصلوات'            : 'Prayer Tracker';
   String get qibla           => isAr ? 'القبلة'                   : 'Qibla';
+  String get azkar           => isAr ? 'الأذكار'                  : 'Azkar';
   String get history         => isAr ? 'السجل'                    : 'History';
   String get settings        => isAr ? 'الإعدادات'                : 'Settings';
   String get fajr            => isAr ? 'الفجر'                    : 'Fajr';
@@ -28,6 +29,8 @@ class AppLocalizations {
   String get qiblaDirection  => isAr ? 'اتجاه القبلة'             : 'Qibla Direction';
   String get fromNorth       => isAr ? 'من الشمال'                : 'from North';
   String get rotatePhone     => isAr ? 'أدر الهاتف حتى تتجه الإبرة الذهبية نحو القبلة' : 'Rotate your phone until the golden needle points to Qibla';
+  String get morningAzkar    => isAr ? 'أذكار الصباح'             : 'Morning Azkar';
+  String get eveningAzkar    => isAr ? 'أذكار المساء'             : 'Evening Azkar';
   String get commitHistory   => isAr ? 'سجل الصلوات'              : 'Prayer Log';
   String get commitStats     => isAr ? 'إحصائيات الالتزام'        : 'Commitment Stats';
   String get commitRate      => isAr ? 'نسبة الالتزام'            : 'Commitment Rate';
@@ -58,6 +61,7 @@ class AppLocalizations {
     final map = {
       'الفجر': 'Fajr', 'الشروق': 'Sunrise', 'الظهر': 'Dhuhr',
       'العصر': 'Asr', 'المغرب': 'Maghrib', 'العشاء': 'Isha',
+      'أذكار الصباح': 'Morning Azkar', 'أذكار المساء': 'Evening Azkar',
     };
     return map[arName] ?? arName;
   }

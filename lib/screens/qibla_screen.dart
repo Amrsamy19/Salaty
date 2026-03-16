@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_qiblah/flutter_qiblah.dart';
+import '../l10n/app_localizations.dart';
 
 // Brand palette
 const _bg     = Color(0xFF061026);
@@ -22,10 +23,12 @@ class _QiblaScreenState extends State<QiblaScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+
     return Scaffold(
       backgroundColor: _bg,
       appBar: AppBar(
-        title: const Text('اتجاه القبلة',
+        title: Text(l.qiblaDirection,
             style: TextStyle(fontWeight: FontWeight.bold, color: _cream)),
         centerTitle: true,
         backgroundColor: _bg,
@@ -66,10 +69,10 @@ class _QiblaScreenState extends State<QiblaScreen> {
                     decoration: BoxDecoration(
                       color: _faint,
                       borderRadius: BorderRadius.circular(30),
-                      border: Border.all(color: _gold.withOpacity(0.35)),
+                      border: Border.all(color: _gold.withValues(alpha: 0.35)),
                     ),
                     child: Text(
-                      '${qiblahAngle.toStringAsFixed(1)}° من الشمال',
+                      '${qiblahAngle.toStringAsFixed(1)}° ${l.fromNorth}',
                       style: const TextStyle(
                           color: _gold, fontSize: 18, fontWeight: FontWeight.bold),
                     ),
@@ -88,8 +91,8 @@ class _QiblaScreenState extends State<QiblaScreen> {
                           height: 300,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            border: Border.all(color: _gold.withOpacity(0.25), width: 2),
-                            color: _bg2.withOpacity(0.6),
+                            border: Border.all(color: _gold.withValues(alpha: 0.25), width: 2),
+                            color: _bg2.withValues(alpha: 0.6),
                           ),
                           child: CustomPaint(
                             painter: BrandCompassPainter(),
@@ -100,7 +103,7 @@ class _QiblaScreenState extends State<QiblaScreen> {
                           top: 12,
                           child: Text('N',
                               style: TextStyle(
-                                  color: _cream.withOpacity(0.4),
+                                  color: _cream.withValues(alpha: 0.4),
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold)),
                         ),
@@ -108,7 +111,7 @@ class _QiblaScreenState extends State<QiblaScreen> {
                         Transform.rotate(
                           angle: (qiblahDirection.direction * (math.pi / 180) * -1),
                           child: Icon(Icons.arrow_upward,
-                              color: _cream.withOpacity(0.2), size: 200),
+                              color: _cream.withValues(alpha: 0.2), size: 200),
                         ),
                         // Qibla needle (gold)
                         Transform.rotate(
@@ -155,12 +158,12 @@ class _QiblaScreenState extends State<QiblaScreen> {
                     ),
                   ),
                   const SizedBox(height: 40),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 40),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 40),
                     child: Text(
-                      'أدر الهاتف حتى تتجه الإبرة الذهبية نحو القبلة',
+                      l.rotatePhone,
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: _slate, fontSize: 15),
+                      style: const TextStyle(color: _slate, fontSize: 15),
                     ),
                   ),
                 ],
@@ -188,7 +191,7 @@ class BrandCompassPainter extends CustomPainter {
       final angle = i * (math.pi / 180);
       final isMajor = i % 30 == 0;
       tickPaint.color =
-          isMajor ? const Color(0xFFC5A35E).withOpacity(0.6) : const Color(0xFFE2D1A8).withOpacity(0.15);
+          isMajor ? const Color(0xFFC5A35E).withValues(alpha: 0.6) : const Color(0xFFE2D1A8).withValues(alpha: 0.15);
       final tickLen = isMajor ? 14.0 : 7.0;
       final start = Offset(
         center.dx + (radius - tickLen) * math.cos(angle),
@@ -203,7 +206,7 @@ class BrandCompassPainter extends CustomPainter {
 
     // Inner glow ring
     final glowPaint = Paint()
-      ..color = const Color(0xFFC5A35E).withOpacity(0.06)
+      ..color = const Color(0xFFC5A35E).withValues(alpha: 0.06)
       ..style = PaintingStyle.fill;
     canvas.drawCircle(center, radius * 0.85, glowPaint);
   }

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/prayer_provider.dart';
 import '../models/tracker_model.dart';
+import '../l10n/app_localizations.dart';
 
 // Brand palette
 const _bg     = Color(0xFF061026);
@@ -19,6 +20,7 @@ class TrackerScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = Provider.of<PrayerProvider>(context);
     final history = provider.history;
+    final l = AppLocalizations.of(context);
 
     // Summary stats
     final totalDays = history.length;
@@ -36,8 +38,8 @@ class TrackerScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: _bg,
       appBar: AppBar(
-        title: const Text('سجل الصلوات',
-            style: TextStyle(fontWeight: FontWeight.bold, color: _cream)),
+        title: Text(l.commitHistory,
+            style: const TextStyle(fontWeight: FontWeight.bold, color: _cream)),
         centerTitle: true,
         backgroundColor: _bg,
         elevation: 0,
@@ -52,45 +54,45 @@ class TrackerScreen extends StatelessWidget {
           ),
         ),
         child: history.isEmpty
-            ? const Center(
-                child: Text('لا يوجد سجل بعد', style: TextStyle(color: _slate, fontSize: 18)),
+            ? Center(
+                child: Text(l.noHistory, style: const TextStyle(color: _slate, fontSize: 18)),
               )
             : ListView(
                 padding: const EdgeInsets.all(20),
                 children: [
                   // Stats header card
-                  _buildStatsCard(totalDays, totalDone, totalPossible, pct, perfectDays),
+                  _buildStatsCard(totalDays, totalDone, totalPossible, pct, perfectDays, l),
                   const SizedBox(height: 20),
-                  ...history.map((day) => _buildDayCard(context, day)).toList(),
+                  ...history.map((day) => _buildDayCard(context, day, l)).toList(),
                 ],
               ),
       ),
     );
   }
 
-  Widget _buildStatsCard(int totalDays, int totalDone, int totalPossible, int pct, int perfectDays) {
+  Widget _buildStatsCard(int totalDays, int totalDone, int totalPossible, int pct, int perfectDays, AppLocalizations l) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: _faint,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _gold.withOpacity(0.35), width: 1.2),
+        border: Border.all(color: _gold.withValues(alpha: 0.35), width: 1.2),
       ),
       child: Column(
         children: [
-          const Text(
-            'إحصائيات الالتزام',
-            style: TextStyle(color: _gold, fontSize: 18, fontWeight: FontWeight.bold),
+          Text(
+            l.commitStats,
+            style: const TextStyle(color: _gold, fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _statItem('$pct%', 'نسبة الالتزام'),
+              _statItem('$pct%', l.commitRate),
               _statDivider(),
-              _statItem('$totalDone/$totalPossible', 'الصلوات المؤداة'),
+              _statItem('$totalDone/$totalPossible', l.prayersDone),
               _statDivider(),
-              _statItem('$perfectDays', 'أيام مكتملة'),
+              _statItem('$perfectDays', l.perfectDays),
             ],
           ),
           const SizedBox(height: 16),
@@ -99,7 +101,7 @@ class TrackerScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
             child: LinearProgressIndicator(
               value: totalPossible > 0 ? totalDone / totalPossible : 0,
-              backgroundColor: _slate.withOpacity(0.2),
+              backgroundColor: _slate.withValues(alpha: 0.2),
               valueColor: const AlwaysStoppedAnimation<Color>(_gold),
               minHeight: 8,
             ),
@@ -120,10 +122,10 @@ class TrackerScreen extends StatelessWidget {
   }
 
   Widget _statDivider() {
-    return Container(width: 1, height: 36, color: _gold.withOpacity(0.2));
+    return Container(width: 1, height: 36, color: _gold.withValues(alpha: 0.2));
   }
 
-  Widget _buildDayCard(BuildContext context, TrackerModel day) {
+  Widget _buildDayCard(BuildContext context, TrackerModel day, AppLocalizations l) {
     final prayers = day.prayerStatus;
     final total = prayers.length;
     final completed = prayers.values.where((v) => v).length;
@@ -136,7 +138,7 @@ class TrackerScreen extends StatelessWidget {
         color: _bg2,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isToday ? _gold.withOpacity(0.5) : _gold.withOpacity(0.12),
+          color: isToday ? _gold.withValues(alpha: 0.5) : _gold.withValues(alpha: 0.12),
           width: isToday ? 1.5 : 1,
         ),
       ),
@@ -155,20 +157,20 @@ class TrackerScreen extends StatelessWidget {
                   color: _faint,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Text('اليوم', style: TextStyle(color: _gold, fontSize: 11)),
+                child: Text(l.today, style: const TextStyle(color: _gold, fontSize: 11)),
               ),
             Expanded(
               child: Text(
-                DateFormat('EEEE، d MMMM', 'ar').format(DateTime.parse(day.date)),
+                DateFormat('EEEE، d MMMM', l.isAr ? 'ar' : 'en').format(DateTime.parse(day.date)),
                 style: const TextStyle(color: _cream, fontSize: 15, fontWeight: FontWeight.bold),
               ),
             ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: isPerfect ? Colors.green.withOpacity(0.2) : _faint,
+                color: isPerfect ? Colors.green.withValues(alpha: 0.2) : _faint,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: isPerfect ? Colors.green.withOpacity(0.4) : _gold.withOpacity(0.3)),
+                border: Border.all(color: isPerfect ? Colors.green.withValues(alpha: 0.4) : _gold.withValues(alpha: 0.3)),
               ),
               child: Text(
                 '$completed / $total',
@@ -205,7 +207,7 @@ class TrackerScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              prayerName,
+                              l.prayerName(prayerName),
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 color: isDone ? Colors.green : _slate,
