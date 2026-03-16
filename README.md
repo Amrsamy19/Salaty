@@ -66,7 +66,6 @@ A beautifully designed, cross-platform Flutter application dedicated to helping 
 
 ## 📱 Screenshots
 
-*(Add screenshots of your application here)*
 *   Home Screen & Next Prayer
 *   Qibla Compass
 *   Prayer Tracker History
