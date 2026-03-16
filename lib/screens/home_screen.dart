@@ -1,11 +1,11 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:adhan/adhan.dart';
 import 'package:hijri/hijri_calendar.dart';
 import '../providers/prayer_provider.dart';
+import '../l10n/app_localizations.dart';
 import 'qibla_screen.dart';
 import 'settings_screen.dart';
 import 'tracker_screen.dart';
@@ -38,6 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final prayerProvider = Provider.of<PrayerProvider>(context);
     final fs = prayerProvider.fontSizeMultiplier;
+    final l = AppLocalizations.of(context);
 
     const bg    = Color(0xFF061026);
     const gold  = Color(0xFFC5A35E);
@@ -46,24 +47,24 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: bg,
       appBar: AppBar(
-        title: const Text('صلاتي', style: TextStyle(fontWeight: FontWeight.bold, color: txt)),
+        title: Text(l.appTitle, style: const TextStyle(fontWeight: FontWeight.bold, color: txt)),
         centerTitle: true,
         backgroundColor: bg,
         elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.explore, color: gold),
-            tooltip: 'القبلة',
+            tooltip: l.qibla,
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const QiblaScreen())),
           ),
           IconButton(
             icon: const Icon(Icons.history, color: gold),
-            tooltip: 'السجل',
+            tooltip: l.history,
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TrackerScreen())),
           ),
           IconButton(
             icon: const Icon(Icons.settings, color: gold),
-            tooltip: 'الإعدادات',
+            tooltip: l.settings,
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
           ),
         ],
@@ -98,8 +99,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildHeader(BuildContext context, PrayerProvider provider, double fs) {
     final nextPrayer = provider.nextPrayer;
+    final l = AppLocalizations.of(context);
     final nextPrayerName = provider.prayerTimes != null 
-        ? _getPrayerName(nextPrayer) 
+        ? l.prayerName(_getPrayerName(nextPrayer)) 
         : '...';
     
     // Compute countdown locally so it refreshes every second via the Timer
@@ -125,15 +127,11 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
 
-    // Build Hijri date string
+    // Hijri date
     final hijri = HijriCalendar.now();
-    final hijriMonths = [
-      'محرم', 'صفر', 'ربيع الأول', 'ربيع الآخر',
-      'جمادى الأولى', 'جمادى الآخرة', 'رجب', 'شعبان',
-      'رمضان', 'شوال', 'ذو القعدة', 'ذو الحجة',
-    ];
-    final hijriStr = '${hijri.hDay} ${hijriMonths[hijri.hMonth - 1]} ${hijri.hYear} هـ';
-    final gregorianStr = DateFormat('EEEE، d MMMM y', 'ar').format(DateTime.now());
+    final hijriStr = '${hijri.hDay} ${l.hijriMonthName(hijri.hMonth)} ${hijri.hYear}${l.hijriSuffix}';
+    final locale = l.isAr ? 'ar' : 'en';
+    final gregorianStr = DateFormat('EEEE، d MMMM y', locale).format(DateTime.now());
 
     return SliverToBoxAdapter(
       child: Padding(
@@ -147,7 +145,7 @@ class _HomeScreenState extends State<HomeScreen> {
               decoration: BoxDecoration(
                 color: const Color(0xFF0D1B3E),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFC5A35E).withOpacity(0.18)),
+                border: Border.all(color: const Color(0xFFC5A35E).withValues(alpha: 0.18)),
               ),
               child: Column(
                 children: [
@@ -163,7 +161,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text(
                     gregorianStr,
                     style: TextStyle(
-                      color: const Color(0xFFE2D1A8).withOpacity(0.5),
+                      color: const Color(0xFFE2D1A8).withValues(alpha: 0.5),
                       fontSize: 13 * fs,
                     ),
                   ),
@@ -178,13 +176,13 @@ class _HomeScreenState extends State<HomeScreen> {
               decoration: BoxDecoration(
                 color: const Color(0x33C5A35E),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFFC5A35E).withOpacity(0.35), width: 1.2),
+                border: Border.all(color: const Color(0xFFC5A35E).withValues(alpha: 0.35), width: 1.2),
               ),
               child: Column(
                 children: [
                   Text(
-                    'الصلاة القادمة',
-                    style: TextStyle(color: const Color(0xFFE2D1A8).withOpacity(0.55), fontSize: 14 * fs),
+                    l.nextPrayer,
+                    style: TextStyle(color: const Color(0xFFE2D1A8).withValues(alpha: 0.55), fontSize: 14 * fs),
                   ),
                   Text(
                     nextPrayerName,
@@ -203,7 +201,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   Text(
-                    'متبقي على الموعد',
+                    l.timeRemaining,
                     style: TextStyle(color: const Color(0xFF64748B), fontSize: 13 * fs),
                   ),
                 ],
@@ -234,8 +232,9 @@ class _HomeScreenState extends State<HomeScreen> {
           final isNext = _isNextPrayer(provider, _getPrayerEnum(item['name'] as String));
           
           const gold   = Color(0xFFC5A35E);
-          const cream  = Color(0xFFE2D1A8);
           const slate  = Color(0xFF64748B);
+          const cream  = Color(0xFFE2D1A8);
+          final l = AppLocalizations.of(context);
           return Container(
             margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
@@ -243,7 +242,7 @@ class _HomeScreenState extends State<HomeScreen> {
               color: isNext ? const Color(0x33C5A35E) : const Color(0xFF0D1B3E),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: isNext ? gold : const Color(0xFFC5A35E).withOpacity(0.18),
+                color: isNext ? gold : const Color(0xFFC5A35E).withValues(alpha: 0.18),
                 width: isNext ? 1.5 : 1,
               ),
             ),
@@ -251,7 +250,7 @@ class _HomeScreenState extends State<HomeScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  item['name'] as String,
+                  l.prayerName(item['name'] as String),
                   style: TextStyle(
                     color: isNext ? gold : cream,
                     fontSize: 20 * fs,
@@ -259,11 +258,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 Text(
-                  DateFormat.jm('ar').format(item['time'] as DateTime),
-                  style: TextStyle(
-                    color: isNext ? gold : slate,
-                    fontSize: 18 * fs,
-                  ),
+                  DateFormat.jm(l.isAr ? 'ar' : 'en').format(item['time'] as DateTime),
+                  style: TextStyle(color: isNext ? gold : slate, fontSize: 18 * fs),
                 ),
               ],
             ),
@@ -276,85 +272,90 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildTrackerSection(PrayerProvider provider, double fs) {
     if (provider.tracker == null) return const SliverToBoxAdapter(child: SizedBox());
-
     final prayers = provider.tracker!.prayerStatus.keys.toList();
+    final doneCount = prayers.where((p) => provider.tracker!.prayerStatus[p] == true).length;
 
     return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(bottom: 14),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'متتبع الصلوات',
-                    style: TextStyle(color: Colors.amber, fontSize: 22 * fs, fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    '${prayers.where((p) => provider.tracker!.prayerStatus[p] == true).length}/${prayers.length}',
-                    style: TextStyle(color: Colors.white54, fontSize: 14 * fs),
-                  ),
-                ],
+      child: Builder(builder: (context) {
+        final l = AppLocalizations.of(context);
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      l.prayerTracker,
+                      style: TextStyle(color: const Color(0xFFC5A35E), fontSize: 20 * fs, fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      '$doneCount/${prayers.length}',
+                      style: TextStyle(color: const Color(0xFF64748B), fontSize: 14 * fs),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            GridView.count(
-              crossAxisCount: 5,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              children: prayers.map((prayer) {
-                final isDone = provider.tracker!.prayerStatus[prayer] ?? false;
-                return GestureDetector(
-                  onTap: () => provider.togglePrayer(prayer),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
-                    curve: Curves.easeInOut,
-                    decoration: BoxDecoration(
-                      color: isDone
-                          ? Colors.green.withOpacity(0.25)
-                          : Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: isDone ? Colors.green : Colors.white24,
-                        width: 1.5,
+              GridView.count(
+                crossAxisCount: 5,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                children: prayers.map((prayer) {
+                  final isDone = provider.tracker!.prayerStatus[prayer] ?? false;
+                  return GestureDetector(
+                    onTap: () => provider.togglePrayer(prayer),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeInOut,
+                      decoration: BoxDecoration(
+                        color: isDone
+                            ? Colors.green.withValues(alpha: 0.2)
+                            : const Color(0xFF0D1B3E),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: isDone
+                              ? Colors.green.withValues(alpha: 0.7)
+                              : const Color(0xFFC5A35E).withValues(alpha: 0.18),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 200),
+                            child: Icon(
+                              isDone ? Icons.check_circle_rounded : Icons.circle_outlined,
+                              key: ValueKey(isDone),
+                              color: isDone ? Colors.green : const Color(0xFF64748B),
+                              size: 26,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            l.prayerName(prayer),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: isDone ? Colors.green : const Color(0xFFE2D1A8).withValues(alpha: 0.6),
+                              fontSize: 11 * fs,
+                              fontWeight: isDone ? FontWeight.bold : FontWeight.normal,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 200),
-                          child: Icon(
-                            isDone ? Icons.check_circle_rounded : Icons.circle_outlined,
-                            key: ValueKey(isDone),
-                            color: isDone ? Colors.green : Colors.white38,
-                            size: 26,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          prayer,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: isDone ? Colors.green : Colors.white70,
-                            fontSize: 11 * fs,
-                            fontWeight: isDone ? FontWeight.bold : FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ],
-        ),
-      ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+        );
+      }),
     );
   }
 

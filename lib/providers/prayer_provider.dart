@@ -18,6 +18,7 @@ class PrayerProvider with ChangeNotifier {
   TrackerModel? _tracker;
   List<TrackerModel> _history = [];
   bool _isLoading = false;
+  Locale _locale = const Locale('ar');
 
   // Brand palette
   static const Color brandBg        = Color(0xFF061026);
@@ -50,6 +51,7 @@ class PrayerProvider with ChangeNotifier {
   Map<String, bool> get notifMap => _notifMap;
   Color get primaryColor => _primaryColor;
   Color get accentColor => _accentColor;
+  Locale get locale => _locale;
 
   Future<void> init() async {
     _isLoading = true;
@@ -75,6 +77,9 @@ class PrayerProvider with ChangeNotifier {
       if (settings['primaryColor'] != null) {
         _primaryColor = Color(settings['primaryColor']);
       }
+      if (settings['locale'] != null) {
+        _locale = Locale(settings['locale']);
+      }
     }
   }
 
@@ -84,6 +89,7 @@ class PrayerProvider with ChangeNotifier {
       'azanSound': _selectedAzanSound,
       'notifMap': _notifMap,
       'primaryColor': _primaryColor.value,
+      'locale': _locale.languageCode,
     });
     if (_prayerTimes != null) {
       await _notificationService.schedulePrayerNotifications(
@@ -92,6 +98,12 @@ class PrayerProvider with ChangeNotifier {
         enabledPrayers: _notifMap,
       );
     }
+  }
+
+  Future<void> setLocale(Locale locale) async {
+    _locale = locale;
+    await saveSettings();
+    notifyListeners();
   }
 
   Future<void> setFontSize(double size) async {

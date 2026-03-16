@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'providers/prayer_provider.dart';
 import 'screens/home_screen.dart';
+import 'l10n/app_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,9 +37,10 @@ class MyApp extends StatelessWidget {
         return MaterialApp(
           title: 'صلاتي',
           debugShowCheckedModeBanner: false,
-          locale: const Locale('ar', ''),
-          supportedLocales: const [Locale('ar', '')],
+          locale: provider.locale,
+          supportedLocales: const [Locale('ar'), Locale('en')],
           localizationsDelegates: const [
+            AppLocalizations.delegate,
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
