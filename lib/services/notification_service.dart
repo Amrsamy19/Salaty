@@ -22,7 +22,10 @@ class NotificationService {
     
     // Guess local timezone from system offset to avoid using flutter_timezone plugin
     final int offsetMilliseconds = DateTime.now().timeZoneOffset.inMilliseconds;
-    String bestLocation = 'UTC';
+    
+    // Default to the first location (e.g., Africa/Abidjan) if nothing matches
+    String bestLocation = tz.timeZoneDatabase.locations.keys.first;
+
     for (final loc in tz.timeZoneDatabase.locations.values) {
       if (loc.currentTimeZone.offset == offsetMilliseconds) {
         bestLocation = loc.name;
@@ -69,7 +72,7 @@ class NotificationService {
           scheduledDate: tz.TZDateTime.from(time, tz.local),
           notificationDetails: NotificationDetails(
             android: AndroidNotificationDetails(
-              isAzkar ? 'azkar_channel' : 'prayer_channel_custom_v2',
+              isAzkar ? 'azkar_channel' : 'prayer_channel_${azanSound.split('.').first}_v3',
               isAzkar ? 'تنبيهات الأذكار' : 'تنبيهات الصلاة',
               channelDescription: isAzkar ? 'تنبيهات أذكار الصباح والمساء' : 'تنبيهات مواقيت الصلاة والأذان',
               importance: Importance.max,
