@@ -19,6 +19,19 @@ class NotificationService {
       settings: initializationSettings,
     );
     tz.initializeTimeZones();
+    
+    // Guess local timezone from system offset to avoid using flutter_timezone plugin
+    final int offsetMilliseconds = DateTime.now().timeZoneOffset.inMilliseconds;
+    String bestLocation = 'UTC';
+    for (final loc in tz.timeZoneDatabase.locations.values) {
+      if (loc.currentTimeZone.offset == offsetMilliseconds) {
+        bestLocation = loc.name;
+        if (bestLocation.contains('Cairo') || bestLocation.contains('Riyadh') || bestLocation.contains('Dubai')) {
+            break; // shortcut for MENA region
+        }
+      }
+    }
+    tz.setLocalLocation(tz.getLocation(bestLocation));
   }
 
   Future<void> schedulePrayerNotifications({

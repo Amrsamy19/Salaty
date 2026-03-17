@@ -90,14 +90,26 @@ class _HomeScreenState extends State<HomeScreen> {
         child: SafeArea(
           child: prayerProvider.isLoading
               ? const Center(child: CircularProgressIndicator(color: Color(0xFFC5A35E)))
-              : CustomScrollView(
-                  slivers: [
-                    _buildHeader(context, prayerProvider, fs),
-                    _buildPrayerTimesList(prayerProvider, fs),
-                    _buildTrackerSection(prayerProvider, fs),
-                    const SliverToBoxAdapter(child: SizedBox(height: 30)),
-                  ],
-                ),
+              : prayerProvider.errorMessage != null
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: SingleChildScrollView(
+                          child: Text(
+                            "Error:\n${prayerProvider.errorMessage}",
+                            style: const TextStyle(color: Colors.red, fontSize: 16),
+                          ),
+                        ),
+                      ),
+                    )
+                  : CustomScrollView(
+                      slivers: [
+                        _buildHeader(context, prayerProvider, fs),
+                        _buildPrayerTimesList(prayerProvider, fs),
+                        _buildTrackerSection(prayerProvider, fs),
+                        const SliverToBoxAdapter(child: SizedBox(height: 30)),
+                      ],
+                    ),
         ),
       ),
     );

@@ -55,17 +55,25 @@ class PrayerProvider with ChangeNotifier {
   Color get accentColor => _accentColor;
   Locale get locale => _locale;
 
+  String? errorMessage;
+
   Future<void> init() async {
     _isLoading = true;
+    errorMessage = null;
     notifyListeners();
 
-    await _notificationService.init();
-    await loadSettings();
-    await refreshPrayerTimes();
-    await loadTracker();
-
-    _isLoading = false;
-    notifyListeners();
+    try {
+      await _notificationService.init();
+      await loadSettings();
+      await refreshPrayerTimes();
+      await loadTracker();
+    } catch (e, st) {
+      errorMessage = "$e\n$st";
+      print(errorMessage);
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> loadSettings() async {
