@@ -22,6 +22,15 @@ class LocationService {
       return null;
     }
 
-    return await Geolocator.getCurrentPosition();
+    try {
+      return await Geolocator.getCurrentPosition()
+          .timeout(const Duration(seconds: 10));
+    } catch (e) {
+      try {
+        return await Geolocator.getLastKnownPosition();
+      } catch (_) {
+        return null;
+      }
+    }
   }
 }
