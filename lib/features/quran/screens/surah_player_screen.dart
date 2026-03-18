@@ -70,7 +70,7 @@ class _SurahPlayerScreenState extends State<SurahPlayerScreen> {
             title: Column(
               children: [
                 Text(
-                  surah.nameArabic,
+                  l10n.isAr ? surah.nameArabic : surah.nameTransliteration,
                   style: const TextStyle(
                     color: Color(0xFFFFD700),
                     fontSize: 20,
@@ -79,7 +79,7 @@ class _SurahPlayerScreenState extends State<SurahPlayerScreen> {
                   ),
                 ),
                 Text(
-                  surah.nameTransliteration,
+                  l10n.isAr ? surah.nameTransliteration : surah.nameArabic,
                   style: const TextStyle(color: Colors.white60, fontSize: 12),
                 ),
               ],
@@ -125,14 +125,6 @@ class _SurahPlayerScreenState extends State<SurahPlayerScreen> {
                                 ),
                                 child: Column(
                                   children: [
-                                    if (index == 0 && surah.number != 1 && surah.number != 9)
-                                      const Padding(
-                                        padding: EdgeInsets.only(bottom: 24),
-                                        child: Text(
-                                          "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ",
-                                          style: TextStyle(color: Color(0xFFFFD700), fontSize: 24, fontFamily: 'Traditional Arabic'),
-                                        ),
-                                      ),
                                     Text(
                                       ayah.text,
                                       textAlign: TextAlign.right,

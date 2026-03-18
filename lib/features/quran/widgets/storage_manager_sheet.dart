@@ -66,6 +66,11 @@ class StorageManagerSheet extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 20),
+              // --- Quran Text Sync Section ---
+              _buildTextSyncSection(context, provider),
+              const SizedBox(height: 20),
+              const Divider(color: Colors.white10),
+              const SizedBox(height: 10),
               if (downloadedSurahs.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 40),
@@ -112,6 +117,71 @@ class StorageManagerSheet extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildTextSyncSection(BuildContext context, QuranProvider provider) {
+    final l10n = AppLocalizations.of(context);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1A2E),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF6C63FF).withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.description_outlined, color: Color(0xFF6C63FF), size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  l10n.downloadAllTexts,
+                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                ),
+              ),
+              if (!provider.isDownloadingAllTexts)
+                IconButton(
+                  icon: const Icon(Icons.sync_rounded, color: Color(0xFFFFD700)),
+                  onPressed: () => provider.downloadAllTexts(),
+                  tooltip: l10n.downloadAllTexts,
+                )
+              else
+                const SizedBox(
+                  width: 20, height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFFD700)),
+                ),
+            ],
+          ),
+          if (provider.isDownloadingAllTexts) ...[
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(2),
+              child: LinearProgressIndicator(
+                value: provider.syncProgress,
+                backgroundColor: Colors.white12,
+                color: const Color(0xFF6C63FF),
+                minHeight: 4,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              "${(provider.syncProgress * 100).toInt()}% - ${l10n.downloadingTexts}",
+              style: const TextStyle(color: Colors.white38, fontSize: 10),
+            ),
+          ] else if (provider.syncProgress == 1.0) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Colors.greenAccent, size: 14),
+                const SizedBox(width: 6),
+                Text(l10n.textsDownloaded, style: const TextStyle(color: Colors.greenAccent, fontSize: 11)),
+              ],
+            ),
+          ],
+        ],
+      ),
     );
   }
 

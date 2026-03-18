@@ -52,11 +52,11 @@ class SurahListTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      surah.nameTransliteration,
+                      AppLocalizations.of(context).isAr ? surah.nameArabic : surah.nameTransliteration,
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: 18,
                       ),
                     ),
                     Row(
@@ -72,10 +72,10 @@ class SurahListTile extends StatelessWidget {
                   ],
                 ),
                 Text(
-                  surah.nameArabic,
-                  style: const TextStyle(
-                    color: Color(0xFFFFD700),
-                    fontSize: 22,
+                  AppLocalizations.of(context).isAr ? surah.nameTransliteration : surah.nameArabic,
+                  style: TextStyle(
+                    color: AppLocalizations.of(context).isAr ? Colors.white38 : const Color(0xFFFFD700),
+                    fontSize: AppLocalizations.of(context).isAr ? 14 : 22,
                     fontFamily: 'Traditional Arabic',
                     fontWeight: FontWeight.bold,
                   ),

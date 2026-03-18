@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'dart:convert';
 import '../models/surah.dart';
 import '../data/surah_data.dart';
 
@@ -19,14 +20,19 @@ class QuranProvider with ChangeNotifier {
   final Map<int, bool> _isFetchingAyahs = {};
   final Map<int, String> _surahAudioUrls = {};
   
+  String? _errorMessage;
+  bool _isDownloadingAllTexts = false;
+  double _syncProgress = 0.0;
+  
   int? _currentSurahNumber;
   int _activeAyahIndex = -1;
   PlayerState? _playerState;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
-  String? _errorMessage;
 
   List<Surah> get allSurahs => _allSurahs;
+  bool get isDownloadingAllTexts => _isDownloadingAllTexts;
+  double get syncProgress => _syncProgress;
   String? get errorMessage => _errorMessage;
   Map<int, DownloadState> get downloadStates => _downloadStates;
   Map<int, double> get downloadProgress => _downloadProgress;
@@ -146,6 +152,9 @@ class QuranProvider with ChangeNotifier {
 
       _downloadStates[surahNumber] = DownloadState.downloaded;
       _localFilePaths[surahNumber] = path;
+      
+      // Also fetch and cache text for offline use
+      fetchAyahs(surahNumber);
     } catch (e) {
       _downloadStates[surahNumber] = DownloadState.error;
       print("Download error: $e");
@@ -236,6 +245,15 @@ class QuranProvider with ChangeNotifier {
     return '${directory.path}/quran/${formatSurahNumber(surahNumber)}.mp3';
   }
 
+  Future<String> _getSurahDataPath(int surahNumber) async {
+    final directory = await getApplicationDocumentsDirectory();
+    final dataDir = Directory('${directory.path}/quran_data');
+    if (!await dataDir.exists()) {
+      await dataDir.create(recursive: true);
+    }
+    return '${dataDir.path}/surah_$surahNumber.json';
+  }
+
   Future<double> getTotalDownloadedSize() async {
     double totalSize = 0;
     for (var path in _localFilePaths.values) {
@@ -253,6 +271,33 @@ class QuranProvider with ChangeNotifier {
     }
   }
 
+  Future<void> downloadAllTexts() async {
+    if (_isDownloadingAllTexts) return;
+
+    final connectivityResult = await Connectivity().checkConnectivity();
+    if (connectivityResult.contains(ConnectivityResult.none)) {
+      _showError("No internet to sync Quran texts");
+      return;
+    }
+
+    _isDownloadingAllTexts = true;
+    _syncProgress = 0.0;
+    notifyListeners();
+
+    try {
+      for (int i = 1; i <= 114; i++) {
+        await fetchAyahs(i);
+        _syncProgress = i / 114;
+        notifyListeners();
+      }
+    } catch (e) {
+      print("Error syncing all texts: $e");
+    } finally {
+      _isDownloadingAllTexts = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> fetchAyahs(int surahNumber) async {
     if (_surahAyahs.containsKey(surahNumber)) return;
     
@@ -260,39 +305,76 @@ class QuranProvider with ChangeNotifier {
     notifyListeners();
     
     try {
-      // 1. Fetch Uthmani Text from AlQuran Cloud
-      final textRes = await _dio.get("https://api.alquran.cloud/v1/surah/$surahNumber/quran-uthmani");
-      
-      // 2. Fetch Timestamps from Quran.com (Reciter 7 = Alafasy) - Use chapter_recitations endpoint
-      final timeRes = await _dio.get("https://api.quran.com/api/v4/chapter_recitations/7/$surahNumber?segments=true");
-      
-      if (textRes.statusCode == 200 && timeRes.statusCode == 200) {
-        final ayahList = textRes.data['data']['ayahs'] as List;
-        final timestampList = timeRes.data['audio_file']['timestamps'] as List;
+      final localDataPath = await _getSurahDataPath(surahNumber);
+      final localFile = File(localDataPath);
 
-        List<Ayah> ayahs = [];
-        for (int i = 0; i < ayahList.length; i++) {
-          final textData = ayahList[i];
-          final timeData = timestampList[i];
-          
-          ayahs.add(Ayah(
-            number: textData['number'],
-            numberInSurah: textData['numberInSurah'],
-            text: textData['text'],
-            timestampFrom: timeData['timestamp_from'] as int,
-            timestampTo: timeData['timestamp_to'] as int,
-          ));
+      // Check if we have local data already
+      if (await localFile.exists()) {
+        final jsonStr = await localFile.readAsString();
+        final Map<String, dynamic> data = jsonDecode(jsonStr);
+        
+        _surahAyahs[surahNumber] = (data['ayahs'] as List)
+            .map((a) => Ayah(
+              number: a['number'],
+              numberInSurah: a['numberInSurah'],
+              text: a['text'],
+              timestampFrom: a['timestampFrom'],
+              timestampTo: a['timestampTo'],
+            )).toList();
+        
+        if (data['audioUrl'] != null) {
+          _surahAudioUrls[surahNumber] = data['audioUrl'];
         }
+      } else {
+        // Fetch from API - but check connectivity first
+        try {
+          final connectivityResult = await Connectivity().checkConnectivity();
+          if (connectivityResult.contains(ConnectivityResult.none)) {
+            _showError("No internet to stream this surah"); // This is the key for localized error
+            _isFetchingAyahs[surahNumber] = false;
+            notifyListeners();
+            return;
+          }
+        } catch (_) {}
+
+        final textRes = await _dio.get("https://api.alquran.cloud/v1/surah/$surahNumber/quran-uthmani");
+        final timeRes = await _dio.get("https://api.quran.com/api/v4/chapter_recitations/7/$surahNumber?segments=true");
         
-        _surahAyahs[surahNumber] = ayahs;
-        
-        // Also capture the correct audio URL from the API to stay in sync
-        if (timeRes.data['audio_file']?['audio_url'] != null) {
-          _surahAudioUrls[surahNumber] = timeRes.data['audio_file']['audio_url'];
+        if (textRes.statusCode == 200 && timeRes.statusCode == 200) {
+          final ayahList = textRes.data['data']['ayahs'] as List;
+          final timestampList = timeRes.data['audio_file']['timestamps'] as List;
+          final audioUrl = timeRes.data['audio_file']?['audio_url'];
+
+          List<Ayah> ayahs = [];
+          for (int i = 0; i < ayahList.length; i++) {
+            ayahs.add(Ayah(
+              number: ayahList[i]['number'],
+              numberInSurah: ayahList[i]['numberInSurah'],
+              text: ayahList[i]['text'],
+              timestampFrom: timestampList[i]['timestamp_from'] as int,
+              timestampTo: timestampList[i]['timestamp_to'] as int,
+            ));
+          }
+          
+          _surahAyahs[surahNumber] = ayahs;
+          if (audioUrl != null) _surahAudioUrls[surahNumber] = audioUrl;
+
+          // Save for offline use
+          final Map<String, dynamic> cacheData = {
+            'ayahs': ayahs.map((a) => {
+              'number': a.number,
+              'numberInSurah': a.numberInSurah,
+              'text': a.text,
+              'timestampFrom': a.timestampFrom,
+              'timestampTo': a.timestampTo,
+            }).toList(),
+            'audioUrl': audioUrl,
+          };
+          await localFile.writeAsString(jsonEncode(cacheData));
         }
       }
     } catch (e) {
-      print("Error fetching detailed ayahs: $e");
+      print("Error in offline-first fetchAyahs: $e");
     } finally {
       _isFetchingAyahs[surahNumber] = false;
       notifyListeners();

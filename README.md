@@ -1,82 +1,64 @@
-# Salaty (صلاتي)
+# Salaty (صلاتي) 🕋
 
-A beautifully designed, cross-platform Flutter application dedicated to helping Muslims maintain their daily prayers, track their commitment, find the Qibla direction, and read daily Azkar.
+![Salaty Logo](assets/images/logo_premium.png)
 
-## ✨ Features
+A beautifully designed, premium Flutter application dedicated to helping Muslims maintain their daily prayers, track commitment, read the Holy Quran, and find the Qibla direction with a stunning modern aesthetic.
 
-*   **🕋 Accurate Prayer Times:** Automatically calculates precise prayer times based on the user's current geographic location.
-*   **⏱️ Next Prayer Countdown:** Displays a dynamic countdown timer for the upcoming prayer in the Home Screen.
-*   **📅 Hijri & Gregorian Dates:** Displays today's date in both Hijri and Gregorian formats directly on the dashboard.
-*   **🧭 Qibla Compass:** A visually stunning, easily readable compass with a golden needle pointing directly to the Kaaba.
-*   **📈 Prayer Tracker:** Allows users to log their daily prayers and viewing an interactive commitment history with mini-progress bars and statistics.
-*   **📖 Daily Azkar:** Dedicated screens for morning (أذكار الصباح) and evening (أذكار المساء) Azkar, perfectly formatted for readability.
-*   **🔔 Smart Notifications:** Get timely reminders for every prayer, along with scheduled notifications for morning and evening Azkar. Play the full Azan audio upon notification.
-*   **🔊 Customizable Azan Sounds:** Choose from multiple renowned Azan reciters (Makkah, Egypt, Abdelbaset, Mohamed Refaat) and preview the sounds directly in the settings.
-*   **🌍 Bilingual Support:** Full localization in **Arabic** (Default) and **English**, with tailored typography (Cairo for Arabic, Outfit for English).
-*   **🎨 Premium UI/UX:** A rich, dark-themed aesthetic utilizing a custom brand palette (Navy Blue, Gold, Cream, and Slate) with smooth, glassmorphism-inspired components and micro-animations.
-*   **🔠 Accessibility:** Adjustable application-wide font sizes for comfortable viewing.
+## ✨ New: Premium Quran Experience (القرآن الكريم)
+
+The latest update introduces a full-featured Quran experience designed for both listening and reading:
+
+*   **📖 Mushaf with Tashkeel:** Read the Holy Quran in beautiful Uthmani script with full diacritics (التشكيل) for an authentic and accurate reading experience.
+*   **🔊 Synchronized Audio:** Listen to the renowned recitation by Mishary Rashid Alafasy.
+*   **✨ Real-time Ayah Highlighting:** Watch the text glow gold and automatically scroll in perfect sync with the audio recitation.
+*   **📥 Offline Playback:** Download any surah to listen without an internet connection, saving data and ensuring accessibility anywhere.
+*   **🧹 Storage Management:** A built-in dashboard to monitor and manage your downloaded surahs, including one-tap "Delete All" for storage efficiency.
+*   **🤲 Dedicated Reading Mode:** A focused Mushaf-style reading view for when you want to read without audio.
+
+## 🕌 Core Features
+
+*   **🕋 Accurate Prayer Times:** Precise calculations based on your geographic location.
+*   **⏱️ Next Prayer Countdown:** A dynamic dashboard showing exactly how much time is left until the next prayer.
+*   **🧭 Qibla Compass:** A visually stunning compass with a golden needle pointing directly to the Kaaba.
+*   **📈 Prayer Tracker & Gamification:** Log your prayers, track streaks, and view interactive stats to maintain your commitment.
+*   **📖 Daily Azkar:** Beautifully formatted morning and evening Azkar with a refined dark-mode UI.
+*   **🔔 Smart Notifications:** Full Azan audio notifications for every prayer time.
+*   **🔊 Customizable Azan:** Choose from multiple famous reciters (Makkah, Egypt, Abdelbaset, and more).
+*   **🌍 Multi-language Support:** Full Arabic and English localization with premium typography (Cairo & Outfit).
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 *   Flutter SDK (v3.11.1 or higher)
 *   Dart SDK
-*   Android Studio / Xcode (for emulation/building)
+*   Android Studio / Xcode
 
 ### Installation
 
-1.  **Clone the repository** (if applicable):
-    ```bash
-    git clone https://github.com/yourusername/salaty.git
-    cd salaty
-    ```
-
-2.  **Install dependencies:**
+1.  **Clone & Fetch Dependencies:**
     ```bash
     flutter pub get
     ```
 
-3.  **Run the application:**
+2.  **Run the application:**
     ```bash
     flutter run
     ```
-    *Note: Ensure you have an emulator running or a physical device connected.*
+    *Note: If you have added new plugins, use a full build to avoid MissingPluginException.*
 
-## 🛠️ Technology Stack & Libraries
+## 🛠️ Technology Stack
 
 *   **Framework:** [Flutter](https://flutter.dev/)
 *   **State Management:** `provider`
-*   **Local Storage:** `shared_preferences`
-*   **Prayer Times Calculation:** `adhan`
-*   **Location Services:** `geolocator`
-*   **Compass & Qibla:** `flutter_qiblah`
-*   **Notifications:** `flutter_local_notifications`
-*   **Audio Playback:** `audioplayers`
-*   **Dates & Formatting:** `intl`, `hijri`
-*   **Fonts:** `google_fonts`
+*   **Audio Powerhouse:** `just_audio` & `audioplayers`
+*   **Network & Data:** `dio`, `connectivity_plus`
+*   **Local Persistence:** `shared_preferences`, `path_provider`
+*   **UI Helpers:** `scrollable_positioned_list`, `google_fonts`, `flutter_spinkit`
+*   **Islamic Engines:** `adhan`, `hijri`, `flutter_qiblah`
 
-## 📁 Project Structure
+## 🎨 Design Philosophy
 
-*   `lib/main.dart` - Entry point, sets up Providers and Theme dependencies.
-*   `lib/screens/` - Contains the UI for the Home, Qibla, Tracker, Azkar, and Settings.
-*   `lib/providers/` - Logic and state management (e.g., `PrayerProvider`).
-*   `lib/services/` - Handles external configurations like Notifications, Storage, and Location.
-*   `lib/models/` - Data definitions (e.g., `TrackerModel`).
-*   `lib/l10n/` - Localization files and string mappings.
+Salaty is built with a **Premium Dark Aesthetic**. We use a curated palette of **Deep Navy (#0A0A0F)**, **Royal Purple**, and **Radiant Gold** to create a spiritual, modern, and distraction-free environment for the user.
 
-## 📱 Screenshots
-
-*   Home Screen & Next Prayer
-*   Qibla Compass
-*   Prayer Tracker History
-*   Morning / Evening Azkar
-*   Settings & Preferences
-
-## 🤝 Contributing
-
-Contributions, issues, and feature requests are welcome!
-Feel free to check [issues page](https://github.com/yourusername/salaty/issues).
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+---
+*Built with ❤️ for the Ummah.*

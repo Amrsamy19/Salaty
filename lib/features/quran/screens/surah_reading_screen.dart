@@ -60,7 +60,7 @@ class _SurahReadingScreenState extends State<SurahReadingScreen> {
             backgroundColor: const Color(0xFF0A0A0F),
             elevation: 0,
             title: Text(
-              surah.nameArabic,
+              AppLocalizations.of(context).isAr ? surah.nameArabic : surah.nameTransliteration,
               style: const TextStyle(
                 color: Color(0xFFFFD700),
                 fontSize: 24,
@@ -87,7 +87,7 @@ class _SurahReadingScreenState extends State<SurahReadingScreen> {
                             itemBuilder: (context, index) {
                               final ayah = ayahs[index];
                               final isActive = provider.currentSurahNumber == widget.surahNumber && activeIndex == index;
-                              return _buildAyahTile(ayah, isActive, index == 0 && widget.surahNumber != 1 && widget.surahNumber != 9);
+                              return _buildAyahTile(ayah, isActive, false);
                             },
                           ),
               ),
@@ -111,7 +111,10 @@ class _SurahReadingScreenState extends State<SurahReadingScreen> {
       ),
       child: Column(
         children: [
-          Text(surah.nameEnglish, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+          Text(
+            AppLocalizations.of(context).isAr ? surah.nameTransliteration : surah.nameEnglish,
+            style: const TextStyle(color: Colors.white70, fontSize: 14),
+          ),
           const SizedBox(height: 4),
           Text(
             "${surah.versesCount} ${AppLocalizations.of(context).ayahs} • ${surah.revelationType == 'Meccan' ? AppLocalizations.of(context).meccan : AppLocalizations.of(context).medinan}",
@@ -125,20 +128,6 @@ class _SurahReadingScreenState extends State<SurahReadingScreen> {
   Widget _buildAyahTile(Ayah ayah, bool isActive, bool showBismillah) {
     return Column(
       children: [
-        if (showBismillah)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 20),
-            child: Text(
-              "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Color(0xFFFFD700),
-                fontSize: 26,
-                fontFamily: 'Traditional Arabic',
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
         AnimatedContainer(
           duration: const Duration(milliseconds: 300),
           width: double.infinity,

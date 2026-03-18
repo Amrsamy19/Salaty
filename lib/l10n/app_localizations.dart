@@ -82,6 +82,9 @@ class AppLocalizations {
   String get medinan         => isAr ? 'مدنية'                    : 'Medinan';
   String get storage         => isAr ? 'إدارة التخزين'           : 'Storage Management';
   String get totalUsed       => isAr ? 'إجمالي المساحة المستخدمة' : 'Total Space Used';
+  String get downloadAllTexts => isAr ? 'تحميل كل نصوص القرآن' : 'Download All Quran Texts';
+  String get downloadingTexts => isAr ? 'جاري تحميل النصوص...' : 'Downloading Texts...';
+  String get textsDownloaded => isAr ? 'تم تحميل كافة النصوص' : 'All texts downloaded';
   String get delete          => isAr ? 'حذف'                      : 'Delete';
   String get deleteAll       => isAr ? 'حذف الكل'                 : 'Delete All';
   String get noDownloaded    => isAr ? 'لا توجد سور محملة'        : 'No downloaded surahs';
