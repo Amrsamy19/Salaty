@@ -2,6 +2,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:adhan/adhan.dart';
+import 'quote_service.dart';
 
 class NotificationService {
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
@@ -55,6 +56,7 @@ class NotificationService {
       {'name': 'العشاء', 'time': prayerTimes.isha, 'isAzkar': false},
     ];
 
+    // Schedule Prayer & Azkar Notifications
     for (var i = 0; i < prayers.length; i++) {
       final prayer = prayers[i];
       final String prayerName = prayer['name'] as String;
@@ -88,5 +90,32 @@ class NotificationService {
         );
       }
     }
+
+    // Schedule Daily Ayah/Hadith Notification at 9:00 AM
+    final now = DateTime.now();
+    var scheduledDate = DateTime(now.year, now.month, now.day, 9, 0);
+    if (scheduledDate.isBefore(now)) {
+      scheduledDate = scheduledDate.add(const Duration(days: 1));
+    }
+
+    final dailyQuote = QuoteService.getDailyQuote();
+    // Default to Arabic for notification body since it's the primary language
+    await flutterLocalNotificationsPlugin.zonedSchedule(
+      id: 999, // Unique ID for daily quote
+      title: 'آية اليوم',
+      body: dailyQuote.textAr,
+      scheduledDate: tz.TZDateTime.from(scheduledDate, tz.local),
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'daily_quote_channel',
+          'آية أو حديث اليوم',
+          channelDescription: 'تنبيهات يومية بآيات قرآنية وأحاديث نبوية',
+          importance: Importance.defaultImportance,
+          priority: Priority.defaultPriority,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.time,
+    );
   }
 }

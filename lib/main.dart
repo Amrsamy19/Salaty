@@ -6,7 +6,8 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:volume_controller/volume_controller.dart';
 import 'providers/prayer_provider.dart';
-import 'screens/home_screen.dart';
+import 'features/quran/providers/quran_provider.dart';
+import 'screens/main_navigation.dart';
 import 'l10n/app_localizations.dart';
 
 void main() async {
@@ -27,6 +28,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => PrayerProvider()..init()),
+        ChangeNotifierProvider(create: (_) => QuranProvider()),
       ],
       child: const MyApp(),
     ),
@@ -93,7 +95,7 @@ class MyApp extends StatelessWidget {
               child: child!,
             );
           },
-          home: const HomeScreen(),
+          home: const MainNavigation(),
         );
       },
     );

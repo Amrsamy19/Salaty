@@ -73,6 +73,26 @@ class AppLocalizations {
   }
 
   String get hijriSuffix => isAr ? ' هـ' : ' AH';
+
+  // Quran Feature
+  String get quranTitle      => isAr ? 'القرآن الكريم'            : 'Holy Quran';
+  String get searchSurah     => isAr ? 'ابحث عن سورة...'          : 'Search Surah...';
+  String get ayahs           => isAr ? 'آية'                      : 'Ayahs';
+  String get meccan          => isAr ? 'مكية'                     : 'Meccan';
+  String get medinan         => isAr ? 'مدنية'                    : 'Medinan';
+  String get storage         => isAr ? 'إدارة التخزين'           : 'Storage Management';
+  String get totalUsed       => isAr ? 'إجمالي المساحة المستخدمة' : 'Total Space Used';
+  String get delete          => isAr ? 'حذف'                      : 'Delete';
+  String get deleteAll       => isAr ? 'حذف الكل'                 : 'Delete All';
+  String get noDownloaded    => isAr ? 'لا توجد سور محملة'        : 'No downloaded surahs';
+  String get nowPlaying      => isAr ? 'يتلو الآن'               : 'Now Playing';
+  String get swipeUpToRead   => isAr ? 'اسحب للأعلى للقراءة'     : 'Swipe up to read';
+  String get swipeUpForAyahs => isAr ? 'اسحب للأعلى للآيات'      : 'Swipe up for Ayahs';
+  String get mushafView      => isAr ? 'عرض المصحف'              : 'Mushaf View';
+  String get noInternet      => isAr ? 'يجب توفر إنترنت لبدء التحميل' : 'There has to be internet to start the download';
+  String get noStream        => isAr ? 'لا يوجد إنترنت لتشغيل السورة' : 'No internet to stream this surah';
+  String get loading         => isAr ? 'جاري التحميل...'          : 'Loading...';
+  String get errorLoading    => isAr ? 'خطأ في تحميل الآيات'      : 'Error loading ayahs';
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

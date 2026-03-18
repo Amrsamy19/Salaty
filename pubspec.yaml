@@ -50,6 +50,11 @@ dependencies:
   audioplayers: ^6.6.0
   hijri: ^3.0.0
   volume_controller: ^3.4.2
+  just_audio: ^0.10.5
+  dio: ^5.9.2
+  path_provider: ^2.1.5
+  scrollable_positioned_list: ^0.3.8
+  connectivity_plus: ^7.0.0
 
 dev_dependencies:
   flutter_test:

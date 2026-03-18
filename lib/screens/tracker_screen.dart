@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../providers/prayer_provider.dart';
 import '../models/tracker_model.dart';
 import '../l10n/app_localizations.dart';
+import '../widgets/heatmap_widget.dart';
 
 // Brand palette
 const _bg     = Color(0xFF061026);
@@ -46,27 +47,100 @@ class TrackerScreen extends StatelessWidget {
         iconTheme: const IconThemeData(color: _gold),
       ),
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [_bg, _bg2, _bg],
+            colors: [
+              provider.themeBackground[0],
+              provider.themeBackground[1],
+              provider.themeBackground[0],
+            ],
           ),
         ),
-        child: history.isEmpty
-            ? Center(
-                child: Text(l.noHistory, style: const TextStyle(color: _slate, fontSize: 18)),
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            // Streak Section
+            _buildStreakHeader(provider.currentStreak, provider.longestStreak, l),
+            const SizedBox(height: 20),
+            
+            // Heatmap Section
+            _buildHeatmapCard(history, _gold, _faint, _slate),
+            const SizedBox(height: 20),
+
+            // Stats header card
+            _buildStatsCard(totalDays, totalDone, totalPossible, pct, perfectDays, l),
+            const SizedBox(height: 24),
+            
+            Text(l.isAr ? 'التاريخ اليومي' : 'Daily History',
+                style: const TextStyle(color: _cream, fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            
+            if (history.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 40),
+                child: Center(
+                  child: Text(l.noHistory, style: const TextStyle(color: _slate, fontSize: 18)),
+                ),
               )
-            : ListView(
-                padding: const EdgeInsets.all(20),
-                children: [
-                  // Stats header card
-                  _buildStatsCard(totalDays, totalDone, totalPossible, pct, perfectDays, l),
-                  const SizedBox(height: 20),
-                  ...history.map((day) => _buildDayCard(context, day, l)).toList(),
-                ],
-              ),
+            else
+              ...history.map((day) => _buildDayCard(context, day, l)).toList(),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildStreakHeader(int current, int longest, AppLocalizations l) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _bg2,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _gold.withValues(alpha: 0.15)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _streakItem(current, l.isAr ? 'السلسلة الحالية' : 'Current Streak', Icons.local_fire_department_rounded, _gold),
+              _streakItem(longest, l.isAr ? 'أطول سلسلة' : 'Longest Streak', Icons.emoji_events_rounded, _cream),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            current == 0 
+                ? (l.isAr ? 'بداية جديدة، كل يوم هو فرصة.' : 'A new beginning is a chance to start fresh.')
+                : (l.isAr ? 'استمر، أنت تبلي بلاءً حسناً!' : 'Keep going, you\'re doing great!'),
+            style: const TextStyle(color: _slate, fontSize: 13, fontStyle: FontStyle.italic),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _streakItem(int val, String label, IconData icon, Color color) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 32),
+        const SizedBox(height: 8),
+        Text('$val ${val == 1 ? (label.contains('ر') ? 'يوم' : 'Day') : (label.contains('ر') ? 'أيام' : 'Days')}', 
+            style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.bold)),
+        Text(label, style: const TextStyle(color: _slate, fontSize: 11)),
+      ],
+    );
+  }
+
+  Widget _buildHeatmapCard(List<TrackerModel> history, Color activeColor, Color faint, Color slate) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: faint,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: HeatmapWidget(history: history, activeColor: activeColor),
     );
   }
 

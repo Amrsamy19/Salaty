@@ -36,8 +36,8 @@ class StorageService {
       history.insert(0, tracker);
     }
     
-    // Limit history to 30 days
-    if (history.length > 30) history = history.sublist(0, 30);
+    // Limit history to 365 days for performance while keeping long streaks
+    if (history.length > 365) history = history.sublist(0, 365);
 
     final data = history.map((t) => t.toJson()).toList();
     await prefs.setString(_keyTracker, jsonEncode(data));
@@ -48,8 +48,12 @@ class StorageService {
     final data = prefs.getString(_keyTracker);
     if (data == null) return [];
     
-    final List<dynamic> jsonList = jsonDecode(data);
-    return jsonList.map((j) => TrackerModel.fromJson(j)).toList();
+    try {
+      final List<dynamic> jsonList = jsonDecode(data);
+      return jsonList.map((j) => TrackerModel.fromJson(j)).toList();
+    } catch (e) {
+      return [];
+    }
   }
 
   Future<void> saveSettings(Map<String, dynamic> settings) async {
