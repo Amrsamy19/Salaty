@@ -38,17 +38,22 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // Expose as constants so widgets can reference them
-  static const Color bg        = Color(0xFF061026);
-  static const Color gold      = Color(0xFFC5A35E);
-  static const Color goldFaint = Color(0x33C5A35E);
-  static const Color textColor = Color(0xFFE2D1A8);
-  static const Color slate     = Color(0xFF64748B);
+  // Sophisticated Islamic Brand Palette
+  static const Color bg            = Color(0xFF040B1A); // Deeper navy
+  static const Color surface       = Color(0xFF0A162B); // Slightly lighter navy for cards
+  static const Color gold          = Color(0xFFD4AF37); // Traditional gold
+  static const Color goldAccent    = Color(0xFFE5C167); // Brighter gold for highlights
+  static const Color goldFaint     = Color(0x1AD4AF37); // Faint gold for overlays
+  static const Color emerald       = Color(0xFF0A4D3C); // Deep Islamic emerald
+  static const Color textMain      = Color(0xFFF1E6D0); // Soft cream for primary text
+  static const Color textSecondary = Color(0xFFA6ADBB); // Muted slate for secondary text
 
   @override
   Widget build(BuildContext context) {
     return Consumer<PrayerProvider>(
       builder: (context, provider, _) {
+        final isAr = provider.locale.languageCode == 'ar';
+        
         return MaterialApp(
           title: 'صلاتي',
           debugShowCheckedModeBanner: false,
@@ -62,29 +67,58 @@ class MyApp extends StatelessWidget {
           ],
           theme: ThemeData(
             useMaterial3: true,
+            brightness: Brightness.dark,
             scaffoldBackgroundColor: bg,
             colorScheme: ColorScheme.fromSeed(
               seedColor: gold,
               brightness: Brightness.dark,
-              background: bg,
-              surface: const Color(0xFF0D1B3E),
               primary: gold,
-              secondary: gold,
               onPrimary: bg,
-              onBackground: textColor,
-              onSurface: textColor,
+              secondary: emerald,
+              onSecondary: Colors.white,
+              surface: surface,
+              onSurface: textMain,
             ),
-            appBarTheme: const AppBarTheme(
-              backgroundColor: bg,
-              foregroundColor: textColor,
+            appBarTheme: AppBarTheme(
+              backgroundColor: Colors.transparent,
+              foregroundColor: gold,
               elevation: 0,
+              centerTitle: true,
+              titleTextStyle: (isAr ? GoogleFonts.cairo() : GoogleFonts.outfit()).copyWith(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: gold,
+                letterSpacing: 1.2,
+              ),
             ),
-            textTheme: (provider.locale.languageCode == 'ar'
+            cardTheme: CardThemeData(
+              color: surface,
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+                side: BorderSide(color: gold.withValues(alpha: 0.1), width: 1),
+              ),
+              shadowColor: Colors.black.withValues(alpha: 0.5),
+            ),
+            textTheme: (isAr
                     ? GoogleFonts.cairoTextTheme(ThemeData.dark().textTheme)
                     : GoogleFonts.outfitTextTheme(ThemeData.dark().textTheme))
                 .apply(
-              bodyColor: textColor,
-              displayColor: textColor,
+              bodyColor: textMain,
+              displayColor: gold,
+            ).copyWith(
+              headlineMedium: TextStyle(fontWeight: FontWeight.bold, color: gold),
+              titleLarge: TextStyle(fontWeight: FontWeight.bold, color: textMain),
+            ),
+            navigationBarTheme: NavigationBarThemeData(
+              backgroundColor: bg,
+              indicatorColor: gold.withValues(alpha: 0.2),
+              labelTextStyle: WidgetStateProperty.all(
+                TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: textSecondary),
+              ),
+              iconTheme: WidgetStateProperty.all(
+                const IconThemeData(size: 24),
+              ),
             ),
           ),
           builder: (context, child) {

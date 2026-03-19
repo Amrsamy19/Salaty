@@ -105,7 +105,7 @@ class PrayerProvider with ChangeNotifier {
       await loadTracker();
     } catch (e, st) {
       errorMessage = "$e\n$st";
-      print(errorMessage);
+      debugPrint(errorMessage);
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -136,7 +136,7 @@ class PrayerProvider with ChangeNotifier {
       'fontSize': _fontSizeMultiplier,
       'azanSound': _selectedAzanSound,
       'notifMap': _notifMap,
-      'primaryColor': _primaryColor.value,
+      'primaryColor': _primaryColor.toARGB32(),
       'locale': _locale.languageCode,
     });
     if (_prayerTimes != null) {

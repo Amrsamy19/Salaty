@@ -28,19 +28,18 @@ class NotificationService {
     tz.initializeTimeZones();
 
     // Guess local timezone from system offset to avoid using flutter_timezone plugin
-    final int offsetMilliseconds = DateTime.now().timeZoneOffset.inMilliseconds;
+    final Duration localOffset = DateTime.now().timeZoneOffset;
 
     // Default to the first location (e.g., Africa/Abidjan) if nothing matches
     String bestLocation = tz.timeZoneDatabase.locations.keys.first;
 
     for (final loc in tz.timeZoneDatabase.locations.values) {
-      if (loc.currentTimeZone.offset == offsetMilliseconds) {
-        bestLocation = loc.name;
-        if (bestLocation.contains('Cairo') ||
-            bestLocation.contains('Riyadh') ||
-            bestLocation.contains('Dubai')) {
-          break; // shortcut for MENA region
-        }
+      if (loc.currentTimeZone.offset == localOffset) {
+         bestLocation = loc.name;
+         // shortcut for MENA region
+         if (bestLocation.contains('Cairo') || bestLocation.contains('Riyadh') || bestLocation.contains('Dubai')) {
+           break; 
+         }
       }
     }
     tz.setLocalLocation(tz.getLocation(bestLocation));

@@ -54,24 +54,22 @@ class _QuranScreenState extends State<QuranScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final gold = theme.colorScheme.primary;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0F),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0A0A0F),
+        backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
           AppLocalizations.of(context).quranTitle,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            fontFamily: 'Traditional Arabic',
-          ),
+          style: theme.appBarTheme.titleTextStyle,
         ),
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.storage_rounded, color: Color(0xFFFFD700)),
+            icon: Icon(Icons.storage_rounded, color: gold),
             onPressed: () => _showStorageSheet(context),
             tooltip: "Storage Management",
           ),
@@ -79,30 +77,35 @@ class _QuranScreenState extends State<QuranScreen> {
       ),
       body: Column(
         children: [
-          // Search Bar
+          // Premium Search Bar
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             child: TextField(
               controller: _searchController,
               onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: theme.colorScheme.onSurface),
               decoration: InputDecoration(
                 filled: true,
-                fillColor: const Color(0xFF1A1A2E),
+                fillColor: theme.colorScheme.surface,
                 hintText: AppLocalizations.of(context).searchSurah,
-                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
-                prefixIcon: const Icon(Icons.search_rounded, color: Colors.white30),
+                hintStyle: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.3)),
+                prefixIcon: Icon(Icons.search_rounded, color: gold.withValues(alpha: 0.5)),
                 suffixIcon: _searchQuery.isNotEmpty 
                   ? IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white30),
+                    icon: Icon(Icons.close, color: gold.withValues(alpha: 0.5)),
                     onPressed: () {
                       _searchController.clear();
                       setState(() => _searchQuery = "");
                     },
                   ) : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 20),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide(color: gold.withValues(alpha: 0.1), width: 1),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide(color: gold, width: 1.5),
                 ),
               ),
             ),

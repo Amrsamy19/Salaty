@@ -149,28 +149,38 @@ class _MainNavigationState extends State<MainNavigation> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final gold = theme.colorScheme.primary;
     
     return Scaffold(
       body: _screens[_selectedIndex],
-      bottomNavigationBar: Theme(
-        data: Theme.of(context).copyWith(
-          canvasColor: const Color(0xFF061026),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          border: Border(top: BorderSide(color: gold.withValues(alpha: 0.1), width: 0.5)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 10,
+              offset: const Offset(0, -2),
+            )
+          ],
         ),
-        child: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: (index) => setState(() => _selectedIndex = index),
-          backgroundColor: const Color(0xFF061026),
-          selectedItemColor: const Color(0xFFC5A35E),
-          unselectedItemColor: Colors.white30,
-          showUnselectedLabels: true,
-          type: BottomNavigationBarType.fixed,
-          items: [
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.home_rounded),
+        child: NavigationBar(
+          selectedIndex: _selectedIndex,
+          onDestinationSelected: (index) => setState(() => _selectedIndex = index),
+          backgroundColor: theme.scaffoldBackgroundColor,
+          indicatorColor: gold.withValues(alpha: 0.15),
+          height: 70,
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+          destinations: [
+            NavigationDestination(
+              icon: Icon(Icons.home_outlined, color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
+              selectedIcon: Icon(Icons.home_rounded, color: gold),
               label: l.isAr ? "الرئيسية" : "Home",
             ),
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.menu_book_rounded),
+            NavigationDestination(
+              icon: Icon(Icons.menu_book_outlined, color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
+              selectedIcon: Icon(Icons.menu_book_rounded, color: gold),
               label: l.isAr ? "القرآن" : "Quran",
             ),
           ],

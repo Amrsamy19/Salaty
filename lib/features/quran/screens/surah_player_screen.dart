@@ -22,8 +22,10 @@ class _SurahPlayerScreenState extends State<SurahPlayerScreen> {
   void initState() {
     super.initState();
     Future.microtask(() {
-      final provider = Provider.of<QuranProvider>(context, listen: false);
-      provider.fetchAyahs(provider.currentSurahNumber ?? widget.surahNumber);
+      if (mounted) {
+        final provider = context.read<QuranProvider>();
+        provider.fetchAyahs(provider.currentSurahNumber ?? widget.surahNumber);
+      }
     });
   }
 
@@ -43,6 +45,11 @@ class _SurahPlayerScreenState extends State<SurahPlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final gold = theme.colorScheme.primary;
+    final surface = theme.colorScheme.surface;
+    final textMain = theme.colorScheme.onSurface;
+
     return Consumer<QuranProvider>(
       builder: (context, provider, child) {
         final currentSurahNum = provider.currentSurahNumber ?? widget.surahNumber;
@@ -59,28 +66,23 @@ class _SurahPlayerScreenState extends State<SurahPlayerScreen> {
         }
 
         return Scaffold(
-          backgroundColor: const Color(0xFF0A0A0F),
+          backgroundColor: theme.scaffoldBackgroundColor,
           appBar: AppBar(
-            backgroundColor: const Color(0xFF0A0A0F),
+            backgroundColor: Colors.transparent,
             elevation: 0,
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+              icon: Icon(Icons.arrow_back_ios_new_rounded, color: gold, size: 20),
               onPressed: () => Navigator.pop(context),
             ),
             title: Column(
               children: [
                 Text(
                   l10n.isAr ? surah.nameArabic : surah.nameTransliteration,
-                  style: const TextStyle(
-                    color: Color(0xFFFFD700),
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'Traditional Arabic',
-                  ),
+                  style: theme.appBarTheme.titleTextStyle,
                 ),
                 Text(
                   l10n.isAr ? surah.nameTransliteration : surah.nameArabic,
-                  style: const TextStyle(color: Colors.white60, fontSize: 12),
+                  style: TextStyle(color: textMain.withValues(alpha: 0.6), fontSize: 12),
                 ),
               ],
             ),
@@ -88,40 +90,48 @@ class _SurahPlayerScreenState extends State<SurahPlayerScreen> {
             actions: [
               if (state != DownloadState.downloaded)
                 IconButton(
-                  icon: const Icon(Icons.download_rounded, color: Color(0xFF6C63FF)),
+                  icon: Icon(Icons.download_rounded, color: theme.colorScheme.secondary),
                   onPressed: () => provider.downloadSurah(surah.number),
                 )
               else
                 IconButton(
                   icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
-                  onPressed: () => provider.deleteSurah(surah.number).then((_) => Navigator.pop(context)),
+                  onPressed: () async {
+                    await provider.deleteSurah(surah.number);
+                    if (context.mounted) Navigator.pop(context);
+                  },
                 ),
             ],
           ),
           body: Column(
             children: [
-              // 1. Ayahs List (Now at the top as main content)
               Expanded(
                 child: isFetching
-                    ? const Center(child: CircularProgressIndicator(color: Color(0xFF6C63FF)))
+                    ? Center(child: CircularProgressIndicator(color: gold))
                     : ayahs == null
-                        ? Center(child: Text(l10n.loading, style: const TextStyle(color: Colors.white38)))
+                        ? Center(child: Text(l10n.loading, style: TextStyle(color: textMain.withValues(alpha: 0.38))))
                         : ScrollablePositionedList.separated(
                             itemScrollController: _itemScrollController,
                             itemPositionsListener: _itemPositionsListener,
                             padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
                             itemCount: ayahs.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 16),
+                            separatorBuilder: (_, _) => const SizedBox(height: 16),
                             itemBuilder: (context, index) {
                               final ayah = ayahs[index];
                               final isActive = activeIndex == index;
                               return AnimatedContainer(
-                                duration: const Duration(milliseconds: 300),
-                                padding: const EdgeInsets.all(20),
+                                duration: const Duration(milliseconds: 400),
+                                padding: const EdgeInsets.all(24),
                                 decoration: BoxDecoration(
-                                  color: isActive ? const Color(0xFF6C63FF).withValues(alpha: 0.15) : const Color(0xFF1A1A2E).withValues(alpha: 0.4),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: isActive ? Border.all(color: const Color(0xFF6C63FF).withValues(alpha: 0.4)) : null,
+                                  color: isActive ? gold.withValues(alpha: 0.1) : surface,
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(
+                                    color: isActive ? gold : gold.withValues(alpha: 0.1),
+                                    width: isActive ? 1.5 : 1,
+                                  ),
+                                  boxShadow: isActive 
+                                      ? [BoxShadow(color: gold.withValues(alpha: 0.1), blurRadius: 10)]
+                                      : [],
                                 ),
                                 child: Column(
                                   children: [
@@ -130,24 +140,30 @@ class _SurahPlayerScreenState extends State<SurahPlayerScreen> {
                                       textAlign: TextAlign.right,
                                       textDirection: TextDirection.rtl,
                                       style: TextStyle(
-                                        color: isActive ? const Color(0xFFFFD700) : Colors.white,
-                                        fontSize: 24,
+                                        color: isActive ? gold : textMain,
+                                        fontSize: 26,
                                         fontFamily: 'Traditional Arabic',
                                         height: 1.8,
                                         fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
                                       ),
                                     ),
-                                    const SizedBox(height: 12),
-                                    Align(
-                                      alignment: Alignment.centerLeft,
-                                      child: CircleAvatar(
-                                        radius: 14,
-                                        backgroundColor: isActive ? const Color(0xFF6C63FF) : const Color(0xFF6C63FF).withValues(alpha: 0.2),
-                                        child: Text(
-                                          ayah.numberInSurah.toString(),
-                                          style: TextStyle(color: isActive ? Colors.white : const Color(0xFFFFD700), fontSize: 10, fontWeight: FontWeight.bold),
+                                    const SizedBox(height: 16),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: gold.withValues(alpha: 0.1),
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: Text(
+                                            '${surah.number}:${ayah.numberInSurah}',
+                                            style: TextStyle(color: gold, fontSize: 10, fontWeight: FontWeight.bold),
+                                          ),
                                         ),
-                                      ),
+                                        const Spacer(),
+                                      ],
                                     ),
                                   ],
                                 ),
@@ -156,16 +172,17 @@ class _SurahPlayerScreenState extends State<SurahPlayerScreen> {
                           ),
               ),
 
-              // 2. Player Controls (Sleek Bottom Panel)
+              // Player Controls
               Container(
                 padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1A1A2E),
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                  color: surface,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
+                  border: Border(top: BorderSide(color: gold.withValues(alpha: 0.2))),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.4),
-                      blurRadius: 20,
+                      color: Colors.black.withValues(alpha: 0.5),
+                      blurRadius: 30,
                       spreadRadius: 5,
                     )
                   ],
@@ -176,17 +193,17 @@ class _SurahPlayerScreenState extends State<SurahPlayerScreen> {
                     const SizedBox(height: 12),
                     Container(
                       width: 40, height: 4,
-                      decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(2)),
+                      decoration: BoxDecoration(color: gold.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(2)),
                     ),
                     const SizedBox(height: 16),
                     SliderTheme(
                       data: SliderTheme.of(context).copyWith(
-                        trackHeight: 3,
-                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                        activeTrackColor: const Color(0xFF6C63FF),
-                        inactiveTrackColor: Colors.white10,
-                        thumbColor: const Color(0xFFFFD700),
-                        overlayColor: const Color(0xFF6C63FF).withValues(alpha: 0.2),
+                        trackHeight: 4,
+                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
+                        activeTrackColor: gold,
+                        inactiveTrackColor: gold.withValues(alpha: 0.1),
+                        thumbColor: gold,
+                        overlayColor: gold.withValues(alpha: 0.2),
                       ),
                       child: Slider(
                         value: provider.position.inMilliseconds.toDouble().clamp(0, provider.duration.inMilliseconds.toDouble()),
@@ -199,8 +216,8 @@ class _SurahPlayerScreenState extends State<SurahPlayerScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(_formatDuration(provider.position), style: const TextStyle(color: Colors.white38, fontSize: 10)),
-                          Text(_formatDuration(provider.duration), style: const TextStyle(color: Colors.white38, fontSize: 10)),
+                          Text(_formatDuration(provider.position), style: TextStyle(color: textMain.withValues(alpha: 0.4), fontSize: 11)),
+                          Text(_formatDuration(provider.duration), style: TextStyle(color: textMain.withValues(alpha: 0.4), fontSize: 11)),
                         ],
                       ),
                     ),
@@ -209,34 +226,34 @@ class _SurahPlayerScreenState extends State<SurahPlayerScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.shuffle_rounded, color: Colors.white24, size: 20),
+                          icon: Icon(Icons.shuffle_rounded, color: textMain.withValues(alpha: 0.3), size: 20),
                           onPressed: () {},
                         ),
                         IconButton(
-                          icon: const Icon(Icons.skip_previous_rounded, color: Colors.white, size: 40),
+                          icon: Icon(Icons.skip_previous_rounded, color: textMain, size: 40),
                           onPressed: () => provider.playSurah(surah.number > 1 ? surah.number - 1 : 114),
                         ),
                         GestureDetector(
                           onTap: () => provider.playSurah(surah.number),
                           child: Container(
-                            width: 64,
-                            height: 64,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF6C63FF),
+                            width: 72,
+                            height: 72,
+                            decoration: BoxDecoration(
+                              color: gold,
                               shape: BoxShape.circle,
                               boxShadow: [
-                                BoxShadow(color: Color(0xFF6C63FF), blurRadius: 15, spreadRadius: -2)
+                                BoxShadow(color: gold.withValues(alpha: 0.3), blurRadius: 20, spreadRadius: 2)
                               ],
                             ),
-                            child: Icon(isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, color: Colors.white, size: 36),
+                            child: Icon(isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, color: Colors.black, size: 40),
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.skip_next_rounded, color: Colors.white, size: 40),
+                          icon: Icon(Icons.skip_next_rounded, color: textMain, size: 40),
                           onPressed: () => provider.playSurah(surah.number < 114 ? surah.number + 1 : 1),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.repeat_rounded, color: Colors.white24, size: 20),
+                          icon: Icon(Icons.repeat_rounded, color: textMain.withValues(alpha: 0.3), size: 20),
                           onPressed: () {},
                         ),
                       ],

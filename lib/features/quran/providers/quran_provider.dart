@@ -157,7 +157,7 @@ class QuranProvider with ChangeNotifier {
       fetchAyahs(surahNumber);
     } catch (e) {
       _downloadStates[surahNumber] = DownloadState.error;
-      print("Download error: $e");
+      debugPrint("Download error: $e");
     }
     notifyListeners();
   }
@@ -206,7 +206,7 @@ class QuranProvider with ChangeNotifier {
       }
       await _audioPlayer.play();
     } catch (e) {
-      print("Playback error: $e");
+      debugPrint("Playback error: $e");
     }
     notifyListeners();
   }
@@ -291,7 +291,7 @@ class QuranProvider with ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print("Error syncing all texts: $e");
+      debugPrint("Error syncing all texts: $e");
     } finally {
       _isDownloadingAllTexts = false;
       notifyListeners();
@@ -374,7 +374,7 @@ class QuranProvider with ChangeNotifier {
         }
       }
     } catch (e) {
-      print("Error in offline-first fetchAyahs: $e");
+      debugPrint("Error in offline-first fetchAyahs: $e");
     } finally {
       _isFetchingAyahs[surahNumber] = false;
       notifyListeners();

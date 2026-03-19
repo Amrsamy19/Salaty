@@ -85,7 +85,7 @@ class TrackerScreen extends StatelessWidget {
                 ),
               )
             else
-              ...history.map((day) => _buildDayCard(context, day, l)).toList(),
+              ...history.map((day) => _buildDayCard(context, day, l)),
           ],
         ),
       ),

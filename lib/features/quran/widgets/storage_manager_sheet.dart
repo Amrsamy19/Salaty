@@ -9,29 +9,34 @@ class StorageManagerSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final gold = theme.colorScheme.primary;
+    final textMain = theme.colorScheme.onSurface;
+
     return Consumer<QuranProvider>(
       builder: (context, provider, child) {
         final downloadedSurahs = provider.allSurahs.where(
           (s) => provider.downloadStates[s.number] == DownloadState.downloaded).toList();
           
         return Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFF0A0A0F),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          decoration: BoxDecoration(
+            color: theme.scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+            border: Border(top: BorderSide(color: gold.withValues(alpha: 0.2))),
           ),
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
                 width: 40,
-                height: 5,
+                height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(5),
+                  color: gold.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -40,9 +45,9 @@ class StorageManagerSheet extends StatelessWidget {
                     children: [
                        Text(
                         AppLocalizations.of(context).storage,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
+                        style: TextStyle(
+                          color: gold,
+                          fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -51,7 +56,7 @@ class StorageManagerSheet extends StatelessWidget {
                         builder: (context, snapshot) {
                           return Text(
                             "${AppLocalizations.of(context).totalUsed}: ${snapshot.data?.toStringAsFixed(1) ?? '0'} MB",
-                            style: const TextStyle(color: Colors.white60, fontSize: 13),
+                            style: TextStyle(color: textMain.withValues(alpha: 0.5), fontSize: 13),
                           );
                         },
                       ),
@@ -59,17 +64,16 @@ class StorageManagerSheet extends StatelessWidget {
                   ),
                   if (downloadedSurahs.isNotEmpty)
                     TextButton.icon(
-                      icon: const Icon(Icons.delete_sweep_rounded, color: Colors.redAccent),
-                      label: Text(AppLocalizations.of(context).deleteAll, style: const TextStyle(color: Colors.redAccent)),
+                      icon: const Icon(Icons.delete_sweep_rounded, color: Colors.redAccent, size: 20),
+                      label: Text(AppLocalizations.of(context).deleteAll, style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
                       onPressed: () => _confirmDeleteAll(context, provider),
                     ),
                 ],
               ),
-              const SizedBox(height: 20),
-              // --- Quran Text Sync Section ---
+              const SizedBox(height: 24),
               _buildTextSyncSection(context, provider),
               const SizedBox(height: 20),
-              const Divider(color: Colors.white10),
+              Divider(color: gold.withValues(alpha: 0.1)),
               const SizedBox(height: 10),
               if (downloadedSurahs.isEmpty)
                 Padding(
@@ -77,7 +81,7 @@ class StorageManagerSheet extends StatelessWidget {
                   child: Center(
                     child: Text(
                       AppLocalizations.of(context).noDownloaded,
-                      style: const TextStyle(color: Colors.white24),
+                      style: TextStyle(color: textMain.withValues(alpha: 0.3)),
                     ),
                   ),
                 )
@@ -86,27 +90,28 @@ class StorageManagerSheet extends StatelessWidget {
                   child: ListView.separated(
                     shrinkWrap: true,
                     itemCount: downloadedSurahs.length,
-                    separatorBuilder: (_, __) => const Divider(color: Colors.white10),
+                    separatorBuilder: (_, _) => Divider(color: gold.withValues(alpha: 0.1), height: 1),
                     itemBuilder: (context, index) {
                       final surah = downloadedSurahs[index];
                       return ListTile(
+                        contentPadding: EdgeInsets.zero,
                         leading: CircleAvatar(
-                          backgroundColor: Colors.white12,
+                          backgroundColor: gold.withValues(alpha: 0.1),
                           child: Text(
                             surah.number.toString(),
-                            style: const TextStyle(color: Colors.white70, fontSize: 12),
+                            style: TextStyle(color: gold, fontSize: 12, fontWeight: FontWeight.bold),
                           ),
                         ),
                         title: Text(
                           surah.nameTransliteration,
-                          style: const TextStyle(color: Colors.white, fontSize: 14),
+                          style: TextStyle(color: textMain, fontSize: 15, fontWeight: FontWeight.w600),
                         ),
                         subtitle: Text(
                           surah.nameArabic,
-                          style: const TextStyle(color: Colors.white60, fontSize: 12, fontFamily: 'Traditional Arabic'),
+                          style: TextStyle(color: textMain.withValues(alpha: 0.5), fontSize: 13, fontFamily: 'Traditional Arabic'),
                         ),
                         trailing: IconButton(
-                          icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
+                          icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 22),
                           onPressed: () => provider.deleteSurah(surah.number),
                         ),
                       );
@@ -122,61 +127,65 @@ class StorageManagerSheet extends StatelessWidget {
 
   Widget _buildTextSyncSection(BuildContext context, QuranProvider provider) {
     final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final gold = theme.colorScheme.primary;
+    final surface = theme.colorScheme.surface;
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A2E),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF6C63FF).withValues(alpha: 0.2)),
+        color: surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: gold.withValues(alpha: 0.15)),
       ),
       child: Column(
         children: [
           Row(
             children: [
-              const Icon(Icons.description_outlined, color: Color(0xFF6C63FF), size: 20),
+              Icon(Icons.description_outlined, color: gold, size: 22),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   l10n.downloadAllTexts,
-                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                  style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 14, fontWeight: FontWeight.bold),
                 ),
               ),
               if (!provider.isDownloadingAllTexts)
                 IconButton(
-                  icon: const Icon(Icons.sync_rounded, color: Color(0xFFFFD700)),
+                  icon: Icon(Icons.sync_rounded, color: gold),
                   onPressed: () => provider.downloadAllTexts(),
                   tooltip: l10n.downloadAllTexts,
                 )
               else
-                const SizedBox(
+                SizedBox(
                   width: 20, height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFFD700)),
+                  child: CircularProgressIndicator(strokeWidth: 2, color: gold),
                 ),
             ],
           ),
           if (provider.isDownloadingAllTexts) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             ClipRRect(
-              borderRadius: BorderRadius.circular(2),
+              borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
                 value: provider.syncProgress,
-                backgroundColor: Colors.white12,
-                color: const Color(0xFF6C63FF),
-                minHeight: 4,
+                backgroundColor: gold.withValues(alpha: 0.1),
+                color: gold,
+                minHeight: 6,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             Text(
               "${(provider.syncProgress * 100).toInt()}% - ${l10n.downloadingTexts}",
-              style: const TextStyle(color: Colors.white38, fontSize: 10),
+              style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.4), fontSize: 11),
             ),
           ] else if (provider.syncProgress == 1.0) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Row(
               children: [
-                const Icon(Icons.check_circle_rounded, color: Colors.greenAccent, size: 14),
-                const SizedBox(width: 6),
-                Text(l10n.textsDownloaded, style: const TextStyle(color: Colors.greenAccent, fontSize: 11)),
+                const Icon(Icons.check_circle_rounded, color: Colors.greenAccent, size: 16),
+                const SizedBox(width: 8),
+                Text(l10n.textsDownloaded, style: const TextStyle(color: Colors.greenAccent, fontSize: 12, fontWeight: FontWeight.w600)),
               ],
             ),
           ],
@@ -186,23 +195,27 @@ class StorageManagerSheet extends StatelessWidget {
   }
 
   void _confirmDeleteAll(BuildContext context, QuranProvider provider) {
+    final theme = Theme.of(context);
+    final gold = theme.colorScheme.primary;
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
-        title: const Text("Delete All Downloads?", style: TextStyle(color: Colors.white)),
-        content: const Text("This will remove all offline surahs from your local storage.", style: TextStyle(color: Colors.white70)),
+        backgroundColor: theme.colorScheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text("Delete All Downloads?", style: TextStyle(color: gold, fontWeight: FontWeight.bold)),
+        content: Text("This will remove all offline surahs from your local storage.", style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.7))),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
+            child: Text("Cancel", style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
           ),
           TextButton(
             onPressed: () {
               provider.deleteAllDownloaded();
               Navigator.pop(context);
             },
-            child: const Text("Delete All", style: TextStyle(color: Colors.redAccent)),
+            child: const Text("Delete All", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
           ),
         ],
       ),

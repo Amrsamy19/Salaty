@@ -22,9 +22,12 @@ class _SurahReadingScreenState extends State<SurahReadingScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => 
-      Provider.of<QuranProvider>(context, listen: false).fetchAyahs(widget.surahNumber)
-    );
+    Future.microtask(() {
+      if (mounted) {
+        final provider = context.read<QuranProvider>();
+        provider.fetchAyahs(provider.currentSurahNumber ?? widget.surahNumber);
+      }
+    });
   }
 
   void _scrollToActiveAyah(int index) {
@@ -42,6 +45,11 @@ class _SurahReadingScreenState extends State<SurahReadingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final gold = theme.colorScheme.primary;
+    final surface = theme.colorScheme.surface;
+    final textMain = theme.colorScheme.onSurface;
+
     return Consumer<QuranProvider>(
       builder: (context, provider, child) {
         final surah = provider.allSurahs.firstWhere((s) => s.number == widget.surahNumber);
@@ -55,39 +63,38 @@ class _SurahReadingScreenState extends State<SurahReadingScreen> {
         }
 
         return Scaffold(
-          backgroundColor: const Color(0xFF0A0A0F),
+          backgroundColor: theme.scaffoldBackgroundColor,
           appBar: AppBar(
-            backgroundColor: const Color(0xFF0A0A0F),
+            backgroundColor: Colors.transparent,
             elevation: 0,
+            leading: IconButton(
+              icon: Icon(Icons.arrow_back_ios_new_rounded, color: gold, size: 20),
+              onPressed: () => Navigator.pop(context),
+            ),
             title: Text(
               AppLocalizations.of(context).isAr ? surah.nameArabic : surah.nameTransliteration,
-              style: const TextStyle(
-                color: Color(0xFFFFD700),
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                fontFamily: 'Traditional Arabic',
-              ),
+              style: theme.appBarTheme.titleTextStyle,
             ),
             centerTitle: true,
           ),
           body: Column(
             children: [
-              _buildReadingHeader(surah),
+              _buildReadingHeader(surah, theme, gold, textMain),
               Expanded(
                 child: isLoading
-                    ? const Center(child: CircularProgressIndicator(color: Color(0xFF6C63FF)))
+                    ? Center(child: CircularProgressIndicator(color: gold))
                     : ayahs == null || ayahs.isEmpty
-                        ? Center(child: Text(AppLocalizations.of(context).errorLoading, style: const TextStyle(color: Colors.white70)))
+                        ? Center(child: Text(AppLocalizations.of(context).errorLoading, style: TextStyle(color: textMain.withValues(alpha: 0.7))))
                         : ScrollablePositionedList.separated(
                             itemScrollController: _itemScrollController,
                             itemPositionsListener: _itemPositionsListener,
                             padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
                             itemCount: ayahs.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 16),
+                            separatorBuilder: (_, _) => const SizedBox(height: 16),
                             itemBuilder: (context, index) {
                               final ayah = ayahs[index];
                               final isActive = provider.currentSurahNumber == widget.surahNumber && activeIndex == index;
-                              return _buildAyahTile(ayah, isActive, false);
+                              return _buildAyahTile(ayah, isActive, theme, gold, surface, textMain);
                             },
                           ),
               ),
@@ -99,72 +106,77 @@ class _SurahReadingScreenState extends State<SurahReadingScreen> {
     );
   }
 
-  Widget _buildReadingHeader(Surah surah) {
+  Widget _buildReadingHeader(Surah surah, ThemeData theme, Color gold, Color textMain) {
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A2E),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.1)),
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: gold.withValues(alpha: 0.1)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 10, offset: const Offset(0, 4))
+        ],
       ),
       child: Column(
         children: [
           Text(
             AppLocalizations.of(context).isAr ? surah.nameTransliteration : surah.nameEnglish,
-            style: const TextStyle(color: Colors.white70, fontSize: 14),
+            style: TextStyle(color: gold, fontSize: 16, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           Text(
             "${surah.versesCount} ${AppLocalizations.of(context).ayahs} • ${surah.revelationType == 'Meccan' ? AppLocalizations.of(context).meccan : AppLocalizations.of(context).medinan}",
-            style: const TextStyle(color: Colors.white38, fontSize: 12),
+            style: TextStyle(color: textMain.withValues(alpha: 0.5), fontSize: 13),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildAyahTile(Ayah ayah, bool isActive, bool showBismillah) {
-    return Column(
-      children: [
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: isActive ? const Color(0xFF6C63FF).withValues(alpha: 0.15) : const Color(0xFF1A1A2E).withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(16),
-            border: isActive ? Border.all(color: const Color(0xFF6C63FF).withValues(alpha: 0.3)) : null,
-          ),
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                ayah.text,
-                textAlign: TextAlign.right,
-                textDirection: TextDirection.rtl,
-                style: TextStyle(
-                  color: isActive ? const Color(0xFFFFD700) : Colors.white,
-                  fontSize: 24,
-                  fontFamily: 'Traditional Arabic',
-                  height: 1.8,
-                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
-              const SizedBox(height: 12),
-              CircleAvatar(
-                radius: 14,
-                backgroundColor: isActive ? const Color(0xFF6C63FF) : const Color(0xFF6C63FF).withValues(alpha: 0.2),
-                child: Text(
-                  ayah.numberInSurah.toString(),
-                  style: TextStyle(color: isActive ? Colors.white : const Color(0xFFFFD700), fontSize: 10, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
+  Widget _buildAyahTile(Ayah ayah, bool isActive, ThemeData theme, Color gold, Color surface, Color textMain) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 400),
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: isActive ? gold.withValues(alpha: 0.1) : surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isActive ? gold : gold.withValues(alpha: 0.1),
+          width: isActive ? 1.5 : 1,
         ),
-      ],
+      ),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            ayah.text,
+            textAlign: TextAlign.right,
+            textDirection: TextDirection.rtl,
+            style: TextStyle(
+              color: isActive ? gold : textMain,
+              fontSize: 26,
+              fontFamily: 'Traditional Arabic',
+              height: 1.8,
+              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: gold.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              ayah.numberInSurah.toString(),
+              style: TextStyle(color: gold, fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
