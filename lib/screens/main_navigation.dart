@@ -63,14 +63,35 @@ class _MainNavigationState extends State<MainNavigation> {
     // Play Azan sound if not Azkar
     if (!isAzkar) {
       try {
-        // Force system volume up for the Azan
+        // Force system volume to MAX for the Azan
         VolumeController.instance.showSystemUI = false;
-        await VolumeController.instance.setVolume(0.85); // 85% volume
+        
+        // Multi-step volume override to ensure it kicks in
+        await VolumeController.instance.setVolume(1.0); 
+        await Future.delayed(const Duration(milliseconds: 200));
+        await VolumeController.instance.setVolume(1.0);
+        
+        // Short delay to ensure volume is applied before playback starts
+        await Future.delayed(const Duration(milliseconds: 500));
         
         final sound = provider.selectedAzanSound;
+        debugPrint('Bypassing silent mode: Playing Azan: $sound at max volume');
+        
+        // Configure for maximum priority - Alarm usage bypasses most silent states
+        await _audioPlayer.setAudioContext(
+          AudioContext(
+            android: AudioContextAndroid(
+              usageType: AndroidUsageType.alarm,
+              audioFocus: AndroidAudioFocus.gain,
+              contentType: AndroidContentType.music,
+            ),
+          ),
+        );
+
+        await _audioPlayer.stop(); 
         await _audioPlayer.play(AssetSource('audio/$sound'));
-      } catch (e) {
-        debugPrint('Error playing sound: $e');
+      } catch (e, st) {
+        debugPrint('Error playing sound in silent mode: $e\n$st');
       }
     }
 

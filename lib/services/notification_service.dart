@@ -111,16 +111,19 @@ class NotificationService {
       scheduledDate: tz.TZDateTime.from(scheduledTime, tz.local),
       notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
-          'test_channel_v5',
+          'test_channel_v10',
           'تنبيهات التجربة القصوى',
           channelDescription: 'قناة اختبار لتخطي وضع الصامت والـ DND',
           importance: Importance.max,
           priority: Priority.high,
           playSound: true,
+          ticker: 'تجربة تنبيه الصلاة',
+          enableVibration: true,
           sound: RawResourceAndroidNotificationSound(azanSound.split('.').first),
           audioAttributesUsage: AudioAttributesUsage.alarm,
           fullScreenIntent: true,
           category: AndroidNotificationCategory.alarm,
+          visibility: NotificationVisibility.public,
         ),
       ),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
@@ -159,13 +162,20 @@ class NotificationService {
     ];
 
     // Schedule Prayer & Azkar Notifications
-    for (var i = 0; i < prayers.length; i++) {
-      final prayer = prayers[i];
+    for (var i = 0; i < prayers.length * 2; i++) {
+      // Loop twice: index 0-6 for today, 7-13 for tomorrow
+      final dayOffset = i ~/ prayers.length;
+      final prayerIndex = i % prayers.length;
+      final prayer = prayers[prayerIndex];
       final String prayerName = prayer['name'] as String;
 
       if (!(enabledPrayers[prayerName] ?? true)) continue;
 
-      final DateTime time = prayer['time'] as DateTime;
+      DateTime time = prayer['time'] as DateTime;
+      if (dayOffset > 0) {
+        time = time.add(Duration(days: dayOffset));
+      }
+      
       final bool isAzkar = (prayer['isAzkar'] as bool?) ?? false;
 
       if (time.isAfter(DateTime.now())) {
@@ -178,15 +188,17 @@ class NotificationService {
           notificationDetails: NotificationDetails(
             android: AndroidNotificationDetails(
               isAzkar
-                  ? 'azkar_channel'
-                  : 'prayer_channel_${azanSound.split('.').first}_v3',
+                  ? 'azkar_channel_v4'
+                  : 'prayer_channel_${azanSound.split('.').first}_v12',
               isAzkar ? 'تنبيهات الأذكار' : 'تنبيهات الصلاة',
               channelDescription: isAzkar
                   ? 'تنبيهات أذكار الصباح والمساء'
                   : 'تنبيهات مواقيت الصلاة والأذان',
               importance: Importance.max,
-              priority: Priority.high,
+              priority: Priority.max,
               playSound: true,
+              ticker: 'حان وقت الصلاة',
+              enableVibration: true,
               sound: isAzkar
                   ? null
                   : RawResourceAndroidNotificationSound(
@@ -195,16 +207,19 @@ class NotificationService {
               audioAttributesUsage: AudioAttributesUsage.alarm,
               fullScreenIntent: true,
               category: AndroidNotificationCategory.alarm,
+              visibility: NotificationVisibility.public,
             ),
           ),
           androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         );
 
-        // Also setup a timer if foreground
-        final diff = time.difference(DateTime.now());
-        Timer(diff, () {
-          onNotificationReceived.add(isAzkar ? 'Azkar' : prayerName);
-        });
+        // Also setup a timer if foreground and it's today
+        if (dayOffset == 0) {
+          final diff = time.difference(DateTime.now());
+          Timer(diff, () {
+            onNotificationReceived.add(isAzkar ? 'Azkar' : prayerName);
+          });
+        }
       }
     }
 
