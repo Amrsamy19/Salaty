@@ -218,6 +218,10 @@ class PrayerProvider with ChangeNotifier {
     await _notificationService.testSchedule(10, _selectedAzanSound);
   }
 
+  Future<Map<String, bool>> checkAzanCompatibility() async {
+    return await _notificationService.checkAzanCompatibility();
+  }
+
   void _detectSeason() {
     final hijri = HijriCalendar.now();
     // Ramadan: Month 9

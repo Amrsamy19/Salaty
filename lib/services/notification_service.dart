@@ -100,13 +100,27 @@ class NotificationService {
     await _requestPermissions();
   }
 
+  /// Comprehensive check for modern Android compatibility
+  Future<Map<String, bool>> checkAzanCompatibility() async {
+    final bool notif = await isNotificationPermissionGranted();
+    final bool alarm = await isExactAlarmPermissionGranted();
+    final bool battery = await isBatteryOptimizationIgnored();
+    
+    return {
+      'notification_permission': notif,
+      'exact_alarm_permission': alarm,
+      'battery_optimization_ignored': battery,
+      'is_fully_compatible': notif && alarm,
+    };
+  }
+
   Future<void> testSchedule(int seconds, String azanSound) async {
     final DateTime scheduledTime = DateTime.now().add(Duration(seconds: seconds));
     
     await flutterLocalNotificationsPlugin.zonedSchedule(
       id: 888, // Unique ID for test
-      title: 'تجربة تنبيه الصلاة (DND Bypass)',
-      body: 'هذا التنبيه مصنف كمنبه (Alarm) لتخطي وضع الصامت',
+      title: 'تجربة تنبيه الأذان (Silent Bypass)',
+      body: 'إذا كان الهاتف صامتاً، يجب أن تسمع الأذان الآن',
       payload: 'Test Prayer High',
       scheduledDate: tz.TZDateTime.from(scheduledTime, tz.local),
       notificationDetails: NotificationDetails(

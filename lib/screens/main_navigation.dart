@@ -20,6 +20,9 @@ class _MainNavigationState extends State<MainNavigation> {
   int _selectedIndex = 0;
   StreamSubscription? _notifSubscription;
   final AudioPlayer _audioPlayer = AudioPlayer();
+  bool _isModalShowing = false;
+  DateTime? _lastPrayerTime;
+  String? _lastPrayerPayload;
 
   final List<Widget> _screens = [
     const HomeScreen(),
@@ -43,6 +46,15 @@ class _MainNavigationState extends State<MainNavigation> {
 
     _notifSubscription = NotificationService.onNotificationReceived.stream.listen((payload) {
       if (payload != null) {
+        final now = DateTime.now();
+        // Debounce: ignore same payload if received within 10 seconds of each other
+        if (payload == _lastPrayerPayload && _lastPrayerTime != null && now.difference(_lastPrayerTime!).inSeconds < 10) {
+          debugPrint('Duplicate trigger ignored: $payload');
+          return;
+        }
+        
+        _lastPrayerPayload = payload;
+        _lastPrayerTime = now;
         _showPrayerModal(payload);
       }
     });
@@ -56,6 +68,8 @@ class _MainNavigationState extends State<MainNavigation> {
   }
 
   void _showPrayerModal(String payload) async {
+    if (_isModalShowing) return;
+    _isModalShowing = true;
     final provider = context.read<PrayerProvider>();
     bool isAzkar = payload == 'Azkar';
     String prayerName = payload.replaceFirst(' High', '');
@@ -148,6 +162,7 @@ class _MainNavigationState extends State<MainNavigation> {
                   child: TextButton(
                     onPressed: () {
                       _audioPlayer.stop();
+                      setState(() => _isModalShowing = false);
                       Navigator.pop(context);
                     },
                     style: TextButton.styleFrom(

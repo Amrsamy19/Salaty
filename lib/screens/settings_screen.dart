@@ -81,6 +81,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 20),
               _sectionHeader(l.notifications),
               _buildNotifCard(provider, l),
+              const SizedBox(height: 20),
+              _sectionHeader(l.isAr ? 'توافق النظام (تجاوز الصامت)' : 'System Check (Silent Bypass)'),
+              _buildDiagnosisCard(provider, l),
               const SizedBox(height: 40),
             ],
           ),
@@ -370,6 +373,100 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           );
         }),
+      ),
+    );
+  }
+  Widget _buildDiagnosisCard(PrayerProvider provider, AppLocalizations l) {
+    return _card(
+      child: FutureBuilder<Map<String, bool>>(
+        future: provider.checkAzanCompatibility(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Padding(
+              padding: EdgeInsets.all(20),
+              child: Center(child: CircularProgressIndicator(color: _gold)),
+            );
+          }
+
+          final data = snapshot.data!;
+          final isReady = data['is_fully_compatible'] ?? false;
+
+          return Column(
+            children: [
+              _checkItem(
+                l.isAr ? 'إذن التنبيهات' : 'Notifications Permission',
+                data['notification_permission'] ?? false,
+              ),
+              Divider(height: 1, color: _gold.withValues(alpha: 0.1)),
+              _checkItem(
+                l.isAr ? 'إذن المنبهات الدقيقة' : 'Exact Alarm Permission',
+                data['exact_alarm_permission'] ?? false,
+              ),
+              Divider(height: 1, color: _gold.withValues(alpha: 0.1)),
+              _checkItem(
+                l.isAr ? 'تجاهل تحسين البطارية' : 'Battery Optimization Ignored',
+                data['battery_optimization_ignored'] ?? false,
+              ),
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    if (!isReady)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Text(
+                          l.isAr ? 'يرجى تفعيل الأذونات لضمان الأذان في الوضع الصامت' : 'Grant permissions to enable Silent Bypass',
+                          style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () => provider.testPrayerNotification(),
+                        icon: const Icon(Icons.play_circle_filled_rounded),
+                        label: Text(l.isAr ? 'اختبار الأذان (بعد 10 ثوان)' : 'Test Azan (In 10s)'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isReady ? _gold : _slate,
+                          foregroundColor: _bg,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _checkItem(String title, bool ok) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Icon(
+            ok ? Icons.check_circle_rounded : Icons.cancel_rounded,
+            color: ok ? Colors.greenAccent : Colors.redAccent,
+            size: 20,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(color: ok ? _cream : _slate, fontSize: 14),
+            ),
+          ),
+          if (!ok)
+            const Text(
+              '!',
+              style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
+            ),
+        ],
       ),
     );
   }
