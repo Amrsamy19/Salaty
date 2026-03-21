@@ -49,6 +49,10 @@ class PrayerProvider with ChangeNotifier {
   Color _primaryColor = brandGold;
   final Color _accentColor  = brandGold;
 
+  bool _isNotifGranted = true;
+  bool _isExactAlarmGranted = true;
+  bool _isBatteryOptimizationIgnored = true;
+
   // Getters
   Position? get currentPosition => _currentPosition;
   PrayerTimes? get prayerTimes => _prayerTimes;
@@ -64,6 +68,9 @@ class PrayerProvider with ChangeNotifier {
   int get currentStreak => _currentStreak;
   int get longestStreak => _longestStreak;
   IslamicSeason get season => _season;
+  bool get isNotifGranted => _isNotifGranted;
+  bool get isExactAlarmGranted => _isExactAlarmGranted;
+  bool get isBatteryOptimizationIgnored => _isBatteryOptimizationIgnored;
 
   // Seasonal Helpers
   Color get themePrimary => _primaryColor;
@@ -100,6 +107,7 @@ class PrayerProvider with ChangeNotifier {
 
     try {
       await _notificationService.init();
+      await checkPermissions();
       await loadSettings();
       await refreshPrayerTimes();
       await loadTracker();
@@ -110,6 +118,23 @@ class PrayerProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  Future<void> checkPermissions() async {
+    _isNotifGranted = await _notificationService.isNotificationPermissionGranted();
+    _isExactAlarmGranted = await _notificationService.isExactAlarmPermissionGranted();
+    _isBatteryOptimizationIgnored = await _notificationService.isBatteryOptimizationIgnored();
+    notifyListeners();
+  }
+
+  Future<void> requestAllPermissions() async {
+    await _notificationService.requestAllPermissions();
+    await checkPermissions();
+  }
+
+  Future<void> requestBatteryOptimization() async {
+    await _notificationService.requestBatteryOptimization();
+    await checkPermissions();
   }
 
   Future<void> loadSettings() async {

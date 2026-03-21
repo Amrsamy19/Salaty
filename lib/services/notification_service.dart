@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:adhan/adhan.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'quote_service.dart';
 
 class NotificationService {
@@ -25,6 +27,10 @@ class NotificationService {
         onNotificationReceived.add(response.payload);
       },
     );
+
+    // Request permissions for Android 13+
+    await _requestPermissions();
+
     tz.initializeTimeZones();
 
     // Guess local timezone from system offset to avoid using flutter_timezone plugin
@@ -43,6 +49,55 @@ class NotificationService {
       }
     }
     tz.setLocalLocation(tz.getLocation(bestLocation));
+  }
+
+  Future<void> _requestPermissions() async {
+    if (Platform.isAndroid) {
+      final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
+          flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>();
+
+      // Android 13+ requires explicit notification permission
+      await androidImplementation?.requestNotificationsPermission();
+      
+      // Android 13+ also may require explicit exact alarm permission
+      // This will open the settings page if it's not granted for Android 13 or 14.
+      await androidImplementation?.requestExactAlarmsPermission();
+    }
+  }
+
+  Future<bool> isNotificationPermissionGranted() async {
+    if (Platform.isAndroid) {
+      return await Permission.notification.isGranted;
+    }
+    return true;
+  }
+
+  Future<bool> isExactAlarmPermissionGranted() async {
+    if (Platform.isAndroid) {
+      final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
+          flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>();
+      return await androidImplementation?.canScheduleExactNotifications() ?? true;
+    }
+    return true;
+  }
+
+  Future<bool> isBatteryOptimizationIgnored() async {
+    if (Platform.isAndroid) {
+      return await Permission.ignoreBatteryOptimizations.isGranted;
+    }
+    return true;
+  }
+
+  Future<void> requestBatteryOptimization() async {
+    if (Platform.isAndroid) {
+      await Permission.ignoreBatteryOptimizations.request();
+    }
+  }
+
+  Future<void> requestAllPermissions() async {
+    await _requestPermissions();
   }
 
   Future<void> testSchedule(int seconds, String azanSound) async {

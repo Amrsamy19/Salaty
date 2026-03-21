@@ -96,6 +96,12 @@ class AppLocalizations {
   String get noStream        => isAr ? 'لا يوجد إنترنت لتشغيل السورة' : 'No internet to stream this surah';
   String get loading         => isAr ? 'جاري التحميل...'          : 'Loading...';
   String get errorLoading    => isAr ? 'خطأ في تحميل الآيات'      : 'Error loading ayahs';
+  String get permissionWarning => isAr ? 'تنبيهات الصلاة قد لا تعمل بشكل صحيح' : 'Prayer notifications may not work correctly';
+  String get enablePermissionDesc => isAr ? 'يرجى تفعيل أذونات التنبيهات والمنبهات لضمان سماع الأذان في وقته.' : 'Please enable notification and alarm permissions to ensure Azan plays on time.';
+  String get batteryOptimizationNote => isAr ? 'تنبيه: تحسين البطارية قد يمنع الأذان من العمل في الخلفية. يرجى استثناء التطبيق.' : 'Note: Battery optimization may prevent Azan from working in the background. Please exclude the app.';
+  String get enableNow => isAr ? 'تفعيل الآن' : 'Enable Now';
+  String get batterySettings => isAr ? 'إعدادات البطارية' : 'Battery Settings';
+  String get enablePermissions => isAr ? 'تفعيل الأذونات' : 'Enable Permissions';
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

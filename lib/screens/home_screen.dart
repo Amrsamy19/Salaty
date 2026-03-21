@@ -119,9 +119,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   ),
-                )
-              : CustomScrollView(
+                ): CustomScrollView(
                   slivers: [
+                    _buildPermissionWarning(context, prayerProvider, fs),
                     _buildHeader(context, prayerProvider, fs),
                     SliverToBoxAdapter(child: QuoteWidget(fs: fs)),
                     _buildPrayerTimesList(prayerProvider, fs),
@@ -129,6 +129,90 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SliverToBoxAdapter(child: SizedBox(height: 30)),
                   ],
                 ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPermissionWarning(
+    BuildContext context,
+    PrayerProvider provider,
+    double fs,
+  ) {
+    if (provider.isNotifGranted && provider.isExactAlarmGranted) {
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
+
+    final l = AppLocalizations.of(context);
+
+    return SliverToBoxAdapter(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.red.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    l.permissionWarning,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              l.enablePermissionDesc,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.7),
+                fontSize: 12 * fs,
+              ),
+            ),
+            if (provider.isNotifGranted && provider.isExactAlarmGranted && !provider.isBatteryOptimizationIgnored)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  l.batteryOptimizationNote,
+                  style: TextStyle(
+                    color: Colors.orangeAccent.withValues(alpha: 0.9),
+                    fontSize: 11 * fs,
+                  ),
+                ),
+              ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => (!provider.isNotifGranted || !provider.isExactAlarmGranted) 
+                    ? provider.requestAllPermissions() 
+                    : provider.requestBatteryOptimization(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: (!provider.isNotifGranted || !provider.isExactAlarmGranted) ? Colors.redAccent : Colors.orangeAccent,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: Text(
+                  (!provider.isNotifGranted || !provider.isExactAlarmGranted)
+                    ? l.enablePermissions
+                    : l.batterySettings,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
