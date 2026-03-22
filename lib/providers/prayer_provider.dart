@@ -52,6 +52,7 @@ class PrayerProvider with ChangeNotifier {
   bool _isNotifGranted = true;
   bool _isExactAlarmGranted = true;
   bool _isBatteryOptimizationIgnored = true;
+  bool _isDNDAccessGranted = true;
 
   // Getters
   Position? get currentPosition => _currentPosition;
@@ -71,6 +72,7 @@ class PrayerProvider with ChangeNotifier {
   bool get isNotifGranted => _isNotifGranted;
   bool get isExactAlarmGranted => _isExactAlarmGranted;
   bool get isBatteryOptimizationIgnored => _isBatteryOptimizationIgnored;
+  bool get isDNDAccessGranted => _isDNDAccessGranted;
 
   // Seasonal Helpers
   Color get themePrimary => _primaryColor;
@@ -124,6 +126,7 @@ class PrayerProvider with ChangeNotifier {
     _isNotifGranted = await _notificationService.isNotificationPermissionGranted();
     _isExactAlarmGranted = await _notificationService.isExactAlarmPermissionGranted();
     _isBatteryOptimizationIgnored = await _notificationService.isBatteryOptimizationIgnored();
+    _isDNDAccessGranted = await _notificationService.isDNDAccessGranted();
     notifyListeners();
   }
 
@@ -134,6 +137,11 @@ class PrayerProvider with ChangeNotifier {
 
   Future<void> requestBatteryOptimization() async {
     await _notificationService.requestBatteryOptimization();
+    await checkPermissions();
+  }
+
+  Future<void> requestDNDAccess() async {
+    await _notificationService.requestDNDAccess();
     await checkPermissions();
   }
 

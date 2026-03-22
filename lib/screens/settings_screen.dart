@@ -407,6 +407,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 l.isAr ? 'تجاهل تحسين البطارية' : 'Battery Optimization Ignored',
                 data['battery_optimization_ignored'] ?? false,
               ),
+              Divider(height: 1, color: _gold.withValues(alpha: 0.1)),
+              _checkItem(
+                l.isAr ? 'الوصول إلى وضع الصامت' : 'DND / Silent Access',
+                data['dnd_access'] ?? false,
+              ),
               const SizedBox(height: 10),
               Padding(
                 padding: const EdgeInsets.all(16),
@@ -419,6 +424,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           l.isAr ? 'يرجى تفعيل الأذونات لضمان الأذان في الوضع الصامت' : 'Grant permissions to enable Silent Bypass',
                           style: const TextStyle(color: Colors.redAccent, fontSize: 12),
                           textAlign: TextAlign.center,
+                        ),
+                      ),
+                    if (!(data['dnd_access'] ?? true))
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton(
+                            onPressed: () => provider.requestDNDAccess(),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Colors.orangeAccent),
+                              foregroundColor: Colors.orangeAccent,
+                            ),
+                            child: Text(l.isAr ? 'تفعيل الوصول لوضع الصامت' : 'Grant DND Access'),
+                          ),
                         ),
                       ),
                     SizedBox(

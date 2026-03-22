@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -27,6 +28,53 @@ class NotificationService {
         onNotificationReceived.add(response.payload);
       },
     );
+
+    // Create notification channels explicitly for better reliability
+    if (Platform.isAndroid) {
+      final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
+          flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>();
+              
+      // Create Prayer Channels for all available sounds to be safe
+      final availableSounds = ['makah', 'egypt', 'abdelbaset', 'mohamedrefaat'];
+      for (final s in availableSounds) {
+        await androidImplementation?.createNotificationChannel(
+          AndroidNotificationChannel(
+            'prayer_channel_${s}_v31',
+            'تنبيهات الصلاة ($s)',
+            description: 'تنبيهات مواقيت الصلاة والأذان',
+            importance: Importance.max,
+            playSound: true,
+            sound: RawResourceAndroidNotificationSound(s),
+            audioAttributesUsage: AudioAttributesUsage.alarm,
+            enableVibration: true,
+          ),
+        );
+      }
+      
+      // Test Channel
+      await androidImplementation?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'test_channel_v31',
+          'تنبيهات التجربة القصوى',
+          description: 'قناة اختبار لتخطي وضع الصامت والـ DND',
+          importance: Importance.max,
+          playSound: true,
+          audioAttributesUsage: AudioAttributesUsage.alarm,
+        ),
+      );
+
+      // Azkar Channel
+      await androidImplementation?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'azkar_channel_v11',
+          'تنبيهات الأذكار',
+          description: 'تنبيهات أذكار الصباح والمساء',
+          importance: Importance.max,
+          playSound: true,
+        ),
+      );
+    }
 
     // Request permissions for Android 13+
     await _requestPermissions();
@@ -62,7 +110,11 @@ class NotificationService {
       
       // Android 13+ also may require explicit exact alarm permission
       // This will open the settings page if it's not granted for Android 13 or 14.
-      await androidImplementation?.requestExactAlarmsPermission();
+      try {
+        await androidImplementation?.requestExactAlarmsPermission();
+      } catch (e) {
+        debugPrint('Error requesting exact alarms: $e');
+      }
     }
   }
 
@@ -81,6 +133,19 @@ class NotificationService {
       return await androidImplementation?.canScheduleExactNotifications() ?? true;
     }
     return true;
+  }
+
+  Future<bool> isDNDAccessGranted() async {
+    if (Platform.isAndroid) {
+      return await Permission.accessNotificationPolicy.isGranted;
+    }
+    return true;
+  }
+
+  Future<void> requestDNDAccess() async {
+    if (Platform.isAndroid) {
+      await Permission.accessNotificationPolicy.request();
+    }
   }
 
   Future<bool> isBatteryOptimizationIgnored() async {
@@ -105,11 +170,13 @@ class NotificationService {
     final bool notif = await isNotificationPermissionGranted();
     final bool alarm = await isExactAlarmPermissionGranted();
     final bool battery = await isBatteryOptimizationIgnored();
+    final bool dnd = await isDNDAccessGranted();
     
     return {
       'notification_permission': notif,
       'exact_alarm_permission': alarm,
       'battery_optimization_ignored': battery,
+      'dnd_access': dnd,
       'is_fully_compatible': notif && alarm,
     };
   }
@@ -125,11 +192,11 @@ class NotificationService {
       scheduledDate: tz.TZDateTime.from(scheduledTime, tz.local),
       notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
-          'test_channel_v10',
+          'test_channel_v31',
           'تنبيهات التجربة القصوى',
           channelDescription: 'قناة اختبار لتخطي وضع الصامت والـ DND',
           importance: Importance.max,
-          priority: Priority.high,
+          priority: Priority.max,
           playSound: true,
           ticker: 'تجربة تنبيه الصلاة',
           enableVibration: true,
@@ -193,39 +260,43 @@ class NotificationService {
       final bool isAzkar = (prayer['isAzkar'] as bool?) ?? false;
 
       if (time.isAfter(DateTime.now())) {
-        await flutterLocalNotificationsPlugin.zonedSchedule(
-          id: i,
-          title: isAzkar ? prayerName : 'حان الآن موعد صلاة $prayerName',
-          body: isAzkar ? 'لا تنس ذكر الله' : 'أقم صلاتك يا عبد الله',
-          payload: isAzkar ? 'Azkar' : prayerName,
-          scheduledDate: tz.TZDateTime.from(time, tz.local),
-          notificationDetails: NotificationDetails(
-            android: AndroidNotificationDetails(
-              isAzkar
-                  ? 'azkar_channel_v4'
-                  : 'prayer_channel_${azanSound.split('.').first}_v12',
-              isAzkar ? 'تنبيهات الأذكار' : 'تنبيهات الصلاة',
-              channelDescription: isAzkar
-                  ? 'تنبيهات أذكار الصباح والمساء'
-                  : 'تنبيهات مواقيت الصلاة والأذان',
-              importance: Importance.max,
-              priority: Priority.max,
-              playSound: true,
-              ticker: 'حان وقت الصلاة',
-              enableVibration: true,
-              sound: isAzkar
-                  ? null
-                  : RawResourceAndroidNotificationSound(
-                      azanSound.split('.').first,
-                    ),
-              audioAttributesUsage: AudioAttributesUsage.alarm,
-              fullScreenIntent: true,
-              category: AndroidNotificationCategory.alarm,
-              visibility: NotificationVisibility.public,
+        try {
+          await flutterLocalNotificationsPlugin.zonedSchedule(
+            id: i,
+            title: isAzkar ? prayerName : 'حان الآن موعد صلاة $prayerName',
+            body: isAzkar ? 'لا تنس ذكر الله' : 'أقم صلاتك يا عبد الله',
+            payload: isAzkar ? 'Azkar' : prayerName,
+            scheduledDate: tz.TZDateTime.from(time, tz.local),
+            notificationDetails: NotificationDetails(
+              android: AndroidNotificationDetails(
+                isAzkar
+                    ? 'azkar_channel_v11'
+                    : 'prayer_channel_${azanSound.split('.').first}_v31',
+                isAzkar ? 'تنبيهات الأذكار' : 'تنبيهات الصلاة',
+                channelDescription: isAzkar
+                    ? 'تنبيهات أذكار الصباح والمساء'
+                    : 'تنبيهات مواقيت الصلاة والأذان',
+                importance: Importance.max,
+                priority: Priority.max,
+                playSound: true,
+                ticker: 'حان وقت الصلاة',
+                enableVibration: true,
+                sound: isAzkar
+                    ? null
+                    : RawResourceAndroidNotificationSound(
+                        azanSound.split('.').first,
+                      ),
+                audioAttributesUsage: AudioAttributesUsage.alarm,
+                fullScreenIntent: true,
+                category: AndroidNotificationCategory.alarm,
+                visibility: NotificationVisibility.public,
+              ),
             ),
-          ),
-          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        );
+            androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          );
+        } catch (e) {
+          debugPrint('Error scheduling notification for $prayerName: $e');
+        }
 
         // Also setup a timer if foreground and it's today
         if (dayOffset == 0) {
