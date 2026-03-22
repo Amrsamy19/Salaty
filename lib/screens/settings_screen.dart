@@ -426,6 +426,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           textAlign: TextAlign.center,
                         ),
                       ),
+                    if (!(data['battery_optimization_ignored'] ?? true))
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton(
+                            onPressed: () => provider.requestBatteryOptimization(),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Colors.lightBlueAccent),
+                              foregroundColor: Colors.lightBlueAccent,
+                            ),
+                            child: Text(l.isAr ? 'تجاهل تحسين البطارية' : 'Disable Battery Optimization'),
+                          ),
+                        ),
+                      ),
                     if (!(data['dnd_access'] ?? true))
                       Padding(
                         padding: const EdgeInsets.only(bottom: 12),
