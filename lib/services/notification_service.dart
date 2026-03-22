@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:adhan/adhan.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
+import 'azan_foreground_service.dart';
 import 'quote_service.dart';
 
 class NotificationService {
@@ -89,11 +92,11 @@ class NotificationService {
 
     for (final loc in tz.timeZoneDatabase.locations.values) {
       if (loc.currentTimeZone.offset == localOffset) {
-         bestLocation = loc.name;
-         // shortcut for MENA region
-         if (bestLocation.contains('Cairo') || bestLocation.contains('Riyadh') || bestLocation.contains('Dubai')) {
-           break; 
-         }
+        bestLocation = loc.name;
+        // shortcut for MENA region
+        if (bestLocation.contains('Cairo') || bestLocation.contains('Riyadh') || bestLocation.contains('Dubai')) {
+          break; 
+        }
       }
     }
     tz.setLocalLocation(tz.getLocation(bestLocation));
@@ -109,7 +112,6 @@ class NotificationService {
       await androidImplementation?.requestNotificationsPermission();
       
       // Android 13+ also may require explicit exact alarm permission
-      // This will open the settings page if it's not granted for Android 13 or 14.
       try {
         await androidImplementation?.requestExactAlarmsPermission();
       } catch (e) {
@@ -181,13 +183,14 @@ class NotificationService {
     };
   }
 
-  Future<void> testSchedule(int seconds, String azanSound) async {
+  Future<void> testSchedule(int seconds, String azanSound, double azanVolume) async {
     final DateTime scheduledTime = DateTime.now().add(Duration(seconds: seconds));
     
+    // Regular notification for UI
     await flutterLocalNotificationsPlugin.zonedSchedule(
-      id: 888, // Unique ID for test
-      title: 'تجربة تنبيه الأذان (Silent Bypass)',
-      body: 'إذا كان الهاتف صامتاً، يجب أن تسمع الأذان الآن',
+      id: 888, 
+      title: 'تجربة تنبيه الأذان (True Alarm)',
+      body: 'سيبدأ الأذان خلال لحظات عبر خدمة الخلفية',
       payload: 'Test Prayer High',
       scheduledDate: tz.TZDateTime.from(scheduledTime, tz.local),
       notificationDetails: NotificationDetails(
@@ -209,20 +212,44 @@ class NotificationService {
       ),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
     );
+
+    // Also schedule the TRUE Alarm
+    if (Platform.isAndroid) {
+      await AndroidAlarmManager.oneShotAt(
+        scheduledTime,
+        888, 
+        prayerAlarmCallback,
+        exact: true,
+        wakeup: true,
+        allowWhileIdle: true,
+        params: {
+          'prayerName': 'تجربة',
+          'azanSound': azanSound,
+          'azanVolume': azanVolume,
+        },
+      );
+    }
     
-    // For in-app testing: also trigger the stream after X seconds if the app is open
     Timer(Duration(seconds: seconds), () {
-       onNotificationReceived.add('Test Prayer High');
+      onNotificationReceived.add('Test Prayer High');
     });
   }
 
   Future<void> schedulePrayerNotifications({
     required PrayerTimes prayerTimes,
     required String azanSound,
+    required double azanVolume,
     required Map<String, bool> enabledPrayers,
   }) async {
     // Clear all pending notifications
     await flutterLocalNotificationsPlugin.cancelAll();
+    
+    // Clear all pending alarms (only cancel a small range to avoid excessive logs)
+    if (Platform.isAndroid) {
+      for (int i = 0; i < 14; i++) {
+        await AndroidAlarmManager.cancel(i);
+      }
+    }
 
     final prayers = [
       {'name': 'الفجر', 'time': prayerTimes.fajr, 'isAzkar': false},
@@ -242,9 +269,7 @@ class NotificationService {
       {'name': 'العشاء', 'time': prayerTimes.isha, 'isAzkar': false},
     ];
 
-    // Schedule Prayer & Azkar Notifications
     for (var i = 0; i < prayers.length * 2; i++) {
-      // Loop twice: index 0-6 for today, 7-13 for tomorrow
       final dayOffset = i ~/ prayers.length;
       final prayerIndex = i % prayers.length;
       final prayer = prayers[prayerIndex];
@@ -273,42 +298,42 @@ class NotificationService {
                     ? 'azkar_channel_v11'
                     : 'prayer_channel_${azanSound.split('.').first}_v31',
                 isAzkar ? 'تنبيهات الأذكار' : 'تنبيهات الصلاة',
-                channelDescription: isAzkar
-                    ? 'تنبيهات أذكار الصباح والمساء'
-                    : 'تنبيهات مواقيت الصلاة والأذان',
                 importance: Importance.max,
                 priority: Priority.max,
-                playSound: true,
-                ticker: 'حان وقت الصلاة',
-                enableVibration: true,
+                playSound: isAzkar, // Audio only for Azkar via system
                 sound: isAzkar
                     ? null
-                    : RawResourceAndroidNotificationSound(
-                        azanSound.split('.').first,
-                      ),
+                    : null, // Azan is handled by ForegroundService Audio Engine
                 audioAttributesUsage: AudioAttributesUsage.alarm,
                 fullScreenIntent: true,
                 category: AndroidNotificationCategory.alarm,
-                visibility: NotificationVisibility.public,
               ),
             ),
             androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
           );
-        } catch (e) {
-          debugPrint('Error scheduling notification for $prayerName: $e');
-        }
 
-        // Also setup a timer if foreground and it's today
-        if (dayOffset == 0) {
-          final diff = time.difference(DateTime.now());
-          Timer(diff, () {
-            onNotificationReceived.add(isAzkar ? 'Azkar' : prayerName);
-          });
+          if (Platform.isAndroid && !isAzkar) {
+            await AndroidAlarmManager.oneShotAt(
+              time,
+              i, 
+              prayerAlarmCallback,
+              exact: true,
+              wakeup: true,
+              allowWhileIdle: true,
+              params: {
+                'prayerName': prayerName,
+                'azanSound': azanSound,
+                'azanVolume': azanVolume,
+              },
+            );
+          }
+        } catch (e) {
+          debugPrint('Error scheduling for $prayerName: $e');
         }
       }
     }
 
-    // Schedule Daily Ayah/Hadith Notification at 9:00 AM
+    // Daily Ayah
     final now = DateTime.now();
     var scheduledDate = DateTime(now.year, now.month, now.day, 9, 0);
     if (scheduledDate.isBefore(now)) {
@@ -316,9 +341,8 @@ class NotificationService {
     }
 
     final dailyQuote = QuoteService.getDailyQuote();
-    // Default to Arabic for notification body since it's the primary language
     await flutterLocalNotificationsPlugin.zonedSchedule(
-      id: 999, // Unique ID for daily quote
+      id: 999, 
       title: 'آية اليوم',
       body: dailyQuote.textAr,
       scheduledDate: tz.TZDateTime.from(scheduledDate, tz.local),
@@ -326,13 +350,27 @@ class NotificationService {
         android: AndroidNotificationDetails(
           'daily_quote_channel',
           'آية أو حديث اليوم',
-          channelDescription: 'تنبيهات يومية بآيات قرآنية وأحاديث نبوية',
           importance: Importance.defaultImportance,
-          priority: Priority.defaultPriority,
         ),
       ),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
     );
   }
+}
+
+@pragma('vm:entry-point')
+void prayerAlarmCallback(int id, Map<String, dynamic> params) async {
+  DartPluginRegistrant.ensureInitialized();
+  final String prayerName = params['prayerName'] ?? 'الصلاة';
+  final String azanSound = params['azanSound'] ?? 'makah.mp3';
+  final double volume = (params['azanVolume'] ?? 1.0).toDouble();
+
+  debugPrint('Alarm triggered for $prayerName');
+  
+  await AzanForegroundService.start(
+    azanSound, 
+    volume: volume, 
+    prayerName: prayerName,
+  );
 }

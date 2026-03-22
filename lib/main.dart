@@ -10,8 +10,16 @@ import 'features/quran/providers/quran_provider.dart';
 import 'screens/main_navigation.dart';
 import 'l10n/app_localizations.dart';
 
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
+import 'services/azan_foreground_service.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize Background Services
+  await AndroidAlarmManager.initialize();
+  AzanForegroundService.init();
+  
   await initializeDateFormatting('ar', null);
 
   // Check if launched by full-screen intent/notification

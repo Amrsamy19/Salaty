@@ -29,12 +29,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _previewSound(String soundFile) async {
+    final provider = Provider.of<PrayerProvider>(context, listen: false);
     if (_playingSound == soundFile) {
       await _audioPlayer.stop();
       setState(() => _playingSound = null);
     } else {
       setState(() => _playingSound = soundFile);
       await _audioPlayer.stop();
+      await _audioPlayer.setVolume(provider.azanVolume);
       await _audioPlayer.play(AssetSource('audio/$soundFile'));
       _audioPlayer.onPlayerComplete.listen((_) {
         if (mounted) setState(() => _playingSound = null);
@@ -78,6 +80,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 20),
               _sectionHeader(l.azanSound),
               _buildAzanSoundCard(provider, l),
+              const SizedBox(height: 20),
+              _sectionHeader(l.isAr ? 'مستوى صوت الأذان' : 'Azan Volume'),
+              _buildAzanVolumeCard(provider, l),
               const SizedBox(height: 20),
               _sectionHeader(l.notifications),
               _buildNotifCard(provider, l),
@@ -305,6 +310,68 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           );
         }),
+      ),
+    );
+  }
+
+  Widget _buildAzanVolumeCard(PrayerProvider provider, AppLocalizations l) {
+    return _card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(l.isAr ? 'قوة الصوت' : 'Volume Level', style: const TextStyle(color: _cream, fontSize: 15)),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _faint,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: _gold.withValues(alpha: 0.3)),
+                  ),
+                  child: Text(
+                    '${(provider.azanVolume * 100).toInt()}%',
+                    style: const TextStyle(color: _gold, fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+            SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                activeTrackColor: _gold,
+                inactiveTrackColor: _slate.withValues(alpha: 0.3),
+                thumbColor: _gold,
+                overlayColor: _faint,
+              ),
+              child: Slider(
+                value: provider.azanVolume,
+                min: 0.1,
+                max: 1.0,
+                divisions: 9,
+                onChanged: (val) {
+                  // Immediate UI update without heavy persistent logic
+                  provider.updateAzanVolumeUI(val);
+                },
+                onChangeEnd: (val) {
+                  // Persist only when dragging stops
+                  provider.setAzanVolume(val);
+                },
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(l.isAr ? 'منخفض' : 'Low', style: const TextStyle(color: _slate, fontSize: 12)),
+                  Text(l.isAr ? 'مرتفع' : 'High', style: const TextStyle(color: _slate, fontSize: 12)),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

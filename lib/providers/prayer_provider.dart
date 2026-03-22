@@ -46,6 +46,7 @@ class PrayerProvider with ChangeNotifier {
     'أذكار الصباح': true,
     'أذكار المساء': true,
   };
+  double _azanVolume = 1.0;
   Color _primaryColor = brandGold;
   final Color _accentColor  = brandGold;
 
@@ -63,6 +64,7 @@ class PrayerProvider with ChangeNotifier {
   double get fontSizeMultiplier => _fontSizeMultiplier;
   String get selectedAzanSound => _selectedAzanSound;
   Map<String, bool> get notifMap => _notifMap;
+  double get azanVolume => _azanVolume;
   Color get primaryColor => _primaryColor;
   Color get accentColor => _accentColor;
   Locale get locale => _locale;
@@ -150,6 +152,7 @@ class PrayerProvider with ChangeNotifier {
     if (settings.isNotEmpty) {
       _fontSizeMultiplier = settings['fontSize'] ?? 1.0;
       _selectedAzanSound = settings['azanSound'] ?? 'makah.mp3';
+      _azanVolume = settings['azanVolume'] ?? 1.0;
       if (settings['notifMap'] != null) {
         _notifMap = Map<String, bool>.from(settings['notifMap']);
         if (!_notifMap.containsKey('أذكار الصباح')) _notifMap['أذكار الصباح'] = true;
@@ -168,6 +171,7 @@ class PrayerProvider with ChangeNotifier {
     await _storageService.saveSettings({
       'fontSize': _fontSizeMultiplier,
       'azanSound': _selectedAzanSound,
+      'azanVolume': _azanVolume,
       'notifMap': _notifMap,
       'primaryColor': _primaryColor.toARGB32(),
       'locale': _locale.languageCode,
@@ -176,6 +180,7 @@ class PrayerProvider with ChangeNotifier {
       await _notificationService.schedulePrayerNotifications(
         prayerTimes: _prayerTimes!,
         azanSound: _selectedAzanSound,
+        azanVolume: _azanVolume,
         enabledPrayers: _notifMap,
       );
     }
@@ -199,6 +204,17 @@ class PrayerProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setAzanVolume(double volume) async {
+    _azanVolume = volume;
+    await saveSettings();
+    notifyListeners();
+  }
+
+  void updateAzanVolumeUI(double volume) {
+    _azanVolume = volume;
+    notifyListeners();
+  }
+
   Future<void> togglePrayerNotif(String name) async {
     _notifMap[name] = !(_notifMap[name] ?? true);
     await saveSettings();
@@ -216,6 +232,7 @@ class PrayerProvider with ChangeNotifier {
       await _notificationService.schedulePrayerNotifications(
         prayerTimes: _prayerTimes!,
         azanSound: _selectedAzanSound,
+        azanVolume: _azanVolume,
         enabledPrayers: _notifMap,
       );
     }
@@ -223,7 +240,7 @@ class PrayerProvider with ChangeNotifier {
   }
 
   Future<void> testPrayerNotification() async {
-    await _notificationService.testSchedule(10, _selectedAzanSound);
+    await _notificationService.testSchedule(10, _selectedAzanSound, _azanVolume);
   }
 
   Future<Map<String, bool>> checkAzanCompatibility() async {

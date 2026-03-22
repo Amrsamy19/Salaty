@@ -1,13 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:audioplayers/audioplayers.dart';
 import 'package:volume_controller/volume_controller.dart';
+import '../providers/prayer_provider.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'home_screen.dart';
 import '../features/quran/screens/quran_screen.dart';
 import '../l10n/app_localizations.dart';
 import '../services/notification_service.dart';
-import '../providers/prayer_provider.dart';
+import '../services/azan_foreground_service.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -70,42 +71,36 @@ class _MainNavigationState extends State<MainNavigation> {
   void _showPrayerModal(String payload) async {
     if (_isModalShowing) return;
     _isModalShowing = true;
-    final provider = context.read<PrayerProvider>();
+    // Handle modal display
     bool isAzkar = payload == 'Azkar';
     String prayerName = payload.replaceFirst(' High', '');
     
     // Play Azan sound if not Azkar
     if (!isAzkar) {
       try {
-        // Force system volume to MAX for the Azan
-        VolumeController.instance.showSystemUI = false;
-        
-        // Multi-step volume override to ensure it kicks in
-        await VolumeController.instance.setVolume(1.0); 
-        await Future.delayed(const Duration(milliseconds: 200));
-        await VolumeController.instance.setVolume(1.0);
-        
-        // Short delay to ensure volume is applied before playback starts
-        await Future.delayed(const Duration(milliseconds: 500));
-        
+        final provider = context.read<PrayerProvider>();
         final sound = provider.selectedAzanSound;
-        debugPrint('Bypassing silent mode: Playing Azan: $sound at max volume');
+        debugPrint('MainNavigation: Playing Azan modal sound: $sound at volume ${provider.azanVolume}');
         
-        // Configure for maximum priority - Alarm usage bypasses most silent states
+        // Use Media stream (music) which follows VolumeController's standard setVolume()
+        await VolumeController.instance.setVolume(provider.azanVolume);
+        
         await _audioPlayer.setAudioContext(
           AudioContext(
             android: AudioContextAndroid(
-              usageType: AndroidUsageType.alarm,
-              audioFocus: AndroidAudioFocus.gain,
+              usageType: AndroidUsageType.media,
+              audioFocus: AndroidAudioFocus.gainTransientMayDuck,
               contentType: AndroidContentType.music,
             ),
           ),
         );
 
-        await _audioPlayer.stop(); 
+        await _audioPlayer.stop();
+        // Set player volume to full, system volume is handled above
+        await _audioPlayer.setVolume(1.0);
         await _audioPlayer.play(AssetSource('audio/$sound'));
-      } catch (e, st) {
-        debugPrint('Error playing sound in silent mode: $e\n$st');
+      } catch (e) {
+        debugPrint('MainNavigation: Error playing sound: $e');
       }
     }
 
@@ -149,6 +144,7 @@ class _MainNavigationState extends State<MainNavigation> {
                       child: TextButton(
                         onPressed: () {
                           _audioPlayer.stop();
+                          AzanForegroundService.stop();
                         },
                         style: TextButton.styleFrom(
                           foregroundColor: Colors.redAccent,
@@ -162,6 +158,7 @@ class _MainNavigationState extends State<MainNavigation> {
                   child: TextButton(
                     onPressed: () {
                       _audioPlayer.stop();
+                      AzanForegroundService.stop();
                       setState(() => _isModalShowing = false);
                       Navigator.pop(context);
                     },
