@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import '../providers/quran_provider.dart';
 import '../models/surah.dart';
@@ -38,9 +39,15 @@ class _SurahReadingScreenState extends State<SurahReadingScreen> {
           index: index,
           duration: const Duration(milliseconds: 500),
           curve: Curves.easeInOutCubic,
+          alignment: 0.1,
         );
       }
     }
+  }
+
+  String _toArabicDigits(int n) {
+    const arabicDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    return n.toString().split('').map((d) => int.tryParse(d) != null ? arabicDigits[int.parse(d)] : d).join();
   }
 
   @override
@@ -79,12 +86,12 @@ class _SurahReadingScreenState extends State<SurahReadingScreen> {
           ),
           body: Column(
             children: [
-              _buildReadingHeader(surah, theme, gold, textMain),
+              _buildReadingHeader(surah, gold, textMain),
               Expanded(
                 child: isLoading
                     ? Center(child: CircularProgressIndicator(color: gold))
                     : ayahs == null || ayahs.isEmpty
-                        ? Center(child: Text(AppLocalizations.of(context).errorLoading, style: TextStyle(color: textMain.withValues(alpha: 0.7))))
+                        ? Center(child: Text(AppLocalizations.of(context).errorLoading))
                         : ScrollablePositionedList.separated(
                             itemScrollController: _itemScrollController,
                             itemPositionsListener: _itemPositionsListener,
@@ -93,8 +100,21 @@ class _SurahReadingScreenState extends State<SurahReadingScreen> {
                             separatorBuilder: (_, _) => const SizedBox(height: 16),
                             itemBuilder: (context, index) {
                               final ayah = ayahs[index];
+                              String displayAyahText = ayah.text.trim();
+
+                              if (index == 0) {
+                                final bismillahRegex = RegExp(r'^بِسْمِ ?\S* اللَّهِ ?\S* الرَّحْمَٰنِ ?\S* الرَّحِيمِ ?\S*');
+                                if (displayAyahText.startsWith('بِسْمِ')) {
+                                  displayAyahText = displayAyahText.replaceFirst(bismillahRegex, "").trim();
+                                }
+                              }
+
+                              if (displayAyahText.isEmpty && index == 0) {
+                                return const SizedBox.shrink();
+                              }
+
                               final isActive = provider.currentSurahNumber == widget.surahNumber && activeIndex == index;
-                              return _buildAyahTile(ayah, isActive, theme, gold, surface, textMain);
+                              return _buildAyahTile(ayah, displayAyahText, isActive, gold, surface, textMain);
                             },
                           ),
               ),
@@ -106,18 +126,15 @@ class _SurahReadingScreenState extends State<SurahReadingScreen> {
     );
   }
 
-  Widget _buildReadingHeader(Surah surah, ThemeData theme, Color gold, Color textMain) {
+  Widget _buildReadingHeader(Surah surah, Color gold, Color textMain) {
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.all(20),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: gold.withValues(alpha: 0.1)),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 10, offset: const Offset(0, 4))
-        ],
       ),
       child: Column(
         children: [
@@ -135,7 +152,7 @@ class _SurahReadingScreenState extends State<SurahReadingScreen> {
     );
   }
 
-  Widget _buildAyahTile(Ayah ayah, bool isActive, ThemeData theme, Color gold, Color surface, Color textMain) {
+  Widget _buildAyahTile(Ayah ayah, String displayAyahText, bool isActive, Color gold, Color surface, Color textMain) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 400),
       width: double.infinity,
@@ -151,16 +168,18 @@ class _SurahReadingScreenState extends State<SurahReadingScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Text(
-            ayah.text,
-            textAlign: TextAlign.right,
-            textDirection: TextDirection.rtl,
-            style: TextStyle(
-              color: isActive ? gold : textMain,
-              fontSize: 26,
-              fontFamily: 'Traditional Arabic',
-              height: 1.8,
-              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+          SizedBox(
+            width: double.infinity,
+            child: Text(
+              displayAyahText,
+              textAlign: TextAlign.right,
+              textDirection: TextDirection.rtl,
+              style: GoogleFonts.amiri(
+                color: isActive ? gold : textMain,
+                fontSize: 28,
+                height: 1.6,
+                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+              ),
             ),
           ),
           const SizedBox(height: 16),
@@ -169,10 +188,15 @@ class _SurahReadingScreenState extends State<SurahReadingScreen> {
             decoration: BoxDecoration(
               color: gold.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: gold.withAlpha(50)),
             ),
             child: Text(
-              ayah.numberInSurah.toString(),
-              style: TextStyle(color: gold, fontSize: 12, fontWeight: FontWeight.bold),
+              _toArabicDigits(ayah.numberInSurah),
+              style: GoogleFonts.amiri(
+                color: gold, 
+                fontSize: 16, 
+                fontWeight: FontWeight.bold
+              ),
             ),
           ),
         ],

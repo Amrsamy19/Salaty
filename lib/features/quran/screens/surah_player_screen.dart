@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import '../providers/quran_provider.dart';
 import '../models/surah.dart';
@@ -37,10 +38,15 @@ class _SurahPlayerScreenState extends State<SurahPlayerScreen> {
           index: index,
           duration: const Duration(milliseconds: 600),
           curve: Curves.easeInOutCubic,
-          alignment: 0.3, // Scroll so the active ayah is near the top but with some margin
+          alignment: 0.3, 
         );
       }
     }
+  }
+
+  String _toArabicDigits(int n) {
+    const arabicDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    return n.toString().split('').map((d) => int.tryParse(d) != null ? arabicDigits[int.parse(d)] : d).join();
   }
 
   @override
@@ -90,7 +96,7 @@ class _SurahPlayerScreenState extends State<SurahPlayerScreen> {
             actions: [
               if (state != DownloadState.downloaded)
                 IconButton(
-                  icon: Icon(Icons.download_rounded, color: theme.colorScheme.secondary),
+                  icon: Icon(Icons.download_rounded, color: gold),
                   onPressed: () => provider.downloadSurah(surah.number),
                 )
               else
@@ -118,6 +124,19 @@ class _SurahPlayerScreenState extends State<SurahPlayerScreen> {
                             separatorBuilder: (_, _) => const SizedBox(height: 16),
                             itemBuilder: (context, index) {
                               final ayah = ayahs[index];
+                              String displayAyahText = ayah.text.trim();
+
+                              if (index == 0) {
+                                final bismillahRegex = RegExp(r'^بِسْمِ ?\S* اللَّهِ ?\S* الرَّحْمَٰنِ ?\S* الرَّحِيمِ ?\S*');
+                                if (displayAyahText.startsWith('بِسْمِ')) {
+                                  displayAyahText = displayAyahText.replaceFirst(bismillahRegex, "").trim();
+                                }
+                              }
+
+                              if (displayAyahText.isEmpty && index == 0) {
+                                return const SizedBox.shrink();
+                              }
+
                               final isActive = activeIndex == index;
                               return AnimatedContainer(
                                 duration: const Duration(milliseconds: 400),
@@ -134,36 +153,38 @@ class _SurahPlayerScreenState extends State<SurahPlayerScreen> {
                                       : [],
                                 ),
                                 child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
-                                    Text(
-                                      ayah.text,
-                                      textAlign: TextAlign.right,
-                                      textDirection: TextDirection.rtl,
-                                      style: TextStyle(
-                                        color: isActive ? gold : textMain,
-                                        fontSize: 26,
-                                        fontFamily: 'Traditional Arabic',
-                                        height: 1.8,
-                                        fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: Text(
+                                        displayAyahText,
+                                        textAlign: TextAlign.right,
+                                        textDirection: TextDirection.rtl,
+                                        style: GoogleFonts.amiri(
+                                          color: isActive ? gold : textMain,
+                                          fontSize: 28,
+                                          height: 1.6,
+                                          fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                                        ),
                                       ),
                                     ),
                                     const SizedBox(height: 16),
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: gold.withValues(alpha: 0.1),
-                                            borderRadius: BorderRadius.circular(10),
-                                          ),
-                                          child: Text(
-                                            '${surah.number}:${ayah.numberInSurah}',
-                                            style: TextStyle(color: gold, fontSize: 10, fontWeight: FontWeight.bold),
-                                          ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: gold.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(color: gold.withAlpha(50)),
+                                      ),
+                                      child: Text(
+                                        _toArabicDigits(ayah.numberInSurah),
+                                        style: GoogleFonts.amiri(
+                                          color: gold, 
+                                          fontSize: 14, 
+                                          fontWeight: FontWeight.bold
                                         ),
-                                        const Spacer(),
-                                      ],
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -245,7 +266,7 @@ class _SurahPlayerScreenState extends State<SurahPlayerScreen> {
                                 BoxShadow(color: gold.withValues(alpha: 0.3), blurRadius: 20, spreadRadius: 2)
                               ],
                             ),
-                            child: Icon(isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, color: Colors.black, size: 40),
+                            child: Icon(provider.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, color: Colors.black, size: 40),
                           ),
                         ),
                         IconButton(
