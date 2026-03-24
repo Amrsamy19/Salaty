@@ -182,6 +182,17 @@ class NotificationService {
     };
   }
 
+  /// Syncs the volume level to Native SharedPreferences for consistent playback
+  Future<void> setNativeAzanVolume(double volume) async {
+    if (Platform.isAndroid) {
+      try {
+        await platform.invokeMethod('setAzanVolume', {'volume': volume});
+      } catch (e) {
+        debugPrint('Error syncing volume to native: $e');
+      }
+    }
+  }
+
   Future<void> testSchedule(int seconds, String azanSound, double azanVolume) async {
     final DateTime scheduledTime = DateTime.now().add(Duration(seconds: seconds));
     

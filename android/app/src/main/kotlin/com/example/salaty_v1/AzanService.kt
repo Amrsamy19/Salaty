@@ -33,11 +33,15 @@ class AzanService : Service() {
         }
 
         val soundName = intent?.getStringExtra("sound") ?: "makah"
-        val volume = intent?.getFloatExtra("volume", 1.0f) ?: 1.0f
         val prayerName = intent?.getStringExtra("prayerName") ?: "الصلاة"
-        Log.d("AzanService", "Starting Azan service with sound: $soundName, volume: $volume, prayer: $prayerName")
 
-        // 1. Acquire WakeLock to ensure system doesn't sleep during playback
+        // 1. Retrieve Current Volume from SharedPreferences (Single source of truth)
+        val prefs = getSharedPreferences("salaty_prefs", Context.MODE_PRIVATE)
+        val currentVolume = prefs.getFloat("azan_volume", intent?.getFloatExtra("volume", 1.0f) ?: 1.0f)
+        
+        Log.d("AzanService", "Azan triggered. Sound: $soundName, User Volume: $currentVolume, Prayer: $prayerName")
+
+        // 2. Acquire WakeLock to ensure system doesn't sleep during playback
         val powerManager = getSystemService(POWER_SERVICE) as PowerManager
         wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Salaty:AzanWakeLock")
         wakeLock?.acquire(5 * 60 * 1000L /*5 minutes max*/)
@@ -54,7 +58,7 @@ class AzanService : Service() {
                 .build()
             
             mediaPlayer?.setAudioAttributes(audioAttributes)
-            mediaPlayer?.setVolume(volume, volume)
+            mediaPlayer?.setVolume(currentVolume, currentVolume)
             mediaPlayer?.isLooping = false
             mediaPlayer?.start()
 

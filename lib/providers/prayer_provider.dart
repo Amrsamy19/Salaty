@@ -113,6 +113,7 @@ class PrayerProvider with ChangeNotifier {
       await _notificationService.init();
       await checkPermissions();
       await loadSettings();
+      await _notificationService.setNativeAzanVolume(_azanVolume);
       await refreshPrayerTimes();
       await loadTracker();
     } catch (e, st) {
@@ -176,6 +177,9 @@ class PrayerProvider with ChangeNotifier {
       'primaryColor': _primaryColor.toARGB32(),
       'locale': _locale.languageCode,
     });
+    
+    await _notificationService.setNativeAzanVolume(_azanVolume);
+
     if (_prayerTimes != null) {
       await _notificationService.schedulePrayerNotifications(
         prayerTimes: _prayerTimes!,

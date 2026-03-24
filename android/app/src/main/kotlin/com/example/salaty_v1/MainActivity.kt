@@ -37,8 +37,10 @@ class MainActivity: FlutterActivity() {
                         result.success(isAzanTriggered)
                         isAzanTriggered = false // Reset after checking
                     }
-                    "stopAzan" -> {
-                        stopAzan()
+                    "setAzanVolume" -> {
+                        val volume = call.argument<Double>("volume")?.toFloat() ?: 1.0f
+                        val prefs = getSharedPreferences("salaty_prefs", Context.MODE_PRIVATE)
+                        prefs.edit().putFloat("azan_volume", volume).apply()
                         result.success(null)
                     }
                     else -> result.notImplemented()
