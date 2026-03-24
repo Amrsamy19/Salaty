@@ -1,6 +1,7 @@
 package com.example.salaty_v1
 
 import android.app.*
+import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.media.AudioAttributes

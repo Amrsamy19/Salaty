@@ -43,6 +43,10 @@ class MainActivity: FlutterActivity() {
                         prefs.edit().putFloat("azan_volume", volume).apply()
                         result.success(null)
                     }
+                    "stopAzan" -> {
+                        stopAzan()
+                        result.success(null)
+                    }
                     else -> result.notImplemented()
                 }
             }
