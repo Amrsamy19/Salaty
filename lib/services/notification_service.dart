@@ -1,17 +1,16 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:adhan/adhan.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
-import 'azan_foreground_service.dart';
 import 'quote_service.dart';
+import 'package:flutter/services.dart';
 
 class NotificationService {
+  static const platform = MethodChannel('azan_channel');
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
@@ -213,21 +212,12 @@ class NotificationService {
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
     );
 
-    // Also schedule the TRUE Alarm
+    // Also schedule the TRUE Alarm via native Android AlarmManager
     if (Platform.isAndroid) {
-      await AndroidAlarmManager.oneShotAt(
-        scheduledTime,
-        888, 
-        prayerAlarmCallback,
-        exact: true,
-        wakeup: true,
-        allowWhileIdle: true,
-        params: {
-          'prayerName': 'تجربة',
-          'azanSound': azanSound,
-          'azanVolume': azanVolume,
-        },
-      );
+      await platform.invokeMethod('scheduleAzan', {
+        'time': scheduledTime.millisecondsSinceEpoch,
+        'sound': azanSound.split('.').first,
+      });
     }
     
     Timer(Duration(seconds: seconds), () {
@@ -245,9 +235,12 @@ class NotificationService {
     await flutterLocalNotificationsPlugin.cancelAll();
     
     // Clear all pending alarms (only cancel a small range to avoid excessive logs)
+    // Clear all pending native alarms
     if (Platform.isAndroid) {
-      for (int i = 0; i < 14; i++) {
-        await AndroidAlarmManager.cancel(i);
+      try {
+        await platform.invokeMethod('cancelAllAlarms');
+      } catch (e) {
+        debugPrint('Error canceling native alarms: $e');
       }
     }
 
@@ -313,19 +306,10 @@ class NotificationService {
           );
 
           if (Platform.isAndroid && !isAzkar) {
-            await AndroidAlarmManager.oneShotAt(
-              time,
-              i, 
-              prayerAlarmCallback,
-              exact: true,
-              wakeup: true,
-              allowWhileIdle: true,
-              params: {
-                'prayerName': prayerName,
-                'azanSound': azanSound,
-                'azanVolume': azanVolume,
-              },
-            );
+            await platform.invokeMethod('scheduleAzan', {
+              'time': time.millisecondsSinceEpoch,
+              'sound': azanSound.split('.').first,
+            });
           }
         } catch (e) {
           debugPrint('Error scheduling for $prayerName: $e');
@@ -357,20 +341,4 @@ class NotificationService {
       matchDateTimeComponents: DateTimeComponents.time,
     );
   }
-}
-
-@pragma('vm:entry-point')
-void prayerAlarmCallback(int id, Map<String, dynamic> params) async {
-  DartPluginRegistrant.ensureInitialized();
-  final String prayerName = params['prayerName'] ?? 'الصلاة';
-  final String azanSound = params['azanSound'] ?? 'makah.mp3';
-  final double volume = (params['azanVolume'] ?? 1.0).toDouble();
-
-  debugPrint('Alarm triggered for $prayerName');
-  
-  await AzanForegroundService.start(
-    azanSound, 
-    volume: volume, 
-    prayerName: prayerName,
-  );
 }

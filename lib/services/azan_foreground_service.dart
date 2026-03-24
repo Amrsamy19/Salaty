@@ -10,6 +10,17 @@ class AzanForegroundHandler extends TaskHandler {
   Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
     debugPrint('AzanForegroundHandler started');
     _audioPlayer = AudioPlayer();
+    
+    // Configure audio context for background/foreground playback
+    await _audioPlayer?.setAudioContext(
+      AudioContext(
+        android: AudioContextAndroid(
+          usageType: AndroidUsageType.alarm,
+          audioFocus: AndroidAudioFocus.gain,
+          contentType: AndroidContentType.music,
+        ),
+      ),
+    );
 
     final String? azanSound = await FlutterForegroundTask.getData<String>(
       key: 'azanSound',

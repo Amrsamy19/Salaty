@@ -8,7 +8,8 @@ import 'home_screen.dart';
 import '../features/quran/screens/quran_screen.dart';
 import '../l10n/app_localizations.dart';
 import '../services/notification_service.dart';
-import '../services/azan_foreground_service.dart';
+import 'azan_full_screen.dart';
+import 'package:flutter/services.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -17,7 +18,8 @@ class MainNavigation extends StatefulWidget {
   State<MainNavigation> createState() => _MainNavigationState();
 }
 
-class _MainNavigationState extends State<MainNavigation> {
+class _MainNavigationState extends State<MainNavigation> with WidgetsBindingObserver {
+  static const _nativeChannel = MethodChannel('azan_channel');
   int _selectedIndex = 0;
   StreamSubscription? _notifSubscription;
   final AudioPlayer _audioPlayer = AudioPlayer();
@@ -39,8 +41,8 @@ class _MainNavigationState extends State<MainNavigation> {
       AudioContext(
         android: AudioContextAndroid(
           usageType: AndroidUsageType.alarm,
-          audioFocus: AndroidAudioFocus.gainTransientMayDuck,
-          contentType: AndroidContentType.sonification,
+          audioFocus: AndroidAudioFocus.gain,
+          contentType: AndroidContentType.music,
         ),
       ),
     );
@@ -59,10 +61,57 @@ class _MainNavigationState extends State<MainNavigation> {
         _showPrayerModal(payload);
       }
     });
+
+    WidgetsBinding.instance.addObserver(this);
+    // Initial check for native trigger (if launched via full-screen intent)
+    _checkNativeAzanTrigger();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkNativeAzanTrigger();
+    }
+  }
+
+  Future<void> _checkNativeAzanTrigger() async {
+    try {
+      final bool triggered = await _nativeChannel.invokeMethod('checkAzanTrigger');
+      if (triggered && mounted) {
+        _showFullScreenAzan();
+      }
+    } catch (e) {
+      debugPrint('Error checking native trigger: $e');
+    }
+  }
+
+  void _showFullScreenAzan() {
+    if (_isModalShowing) return;
+    
+    // Determine prayer name from context if possible, or just default
+    String prayerName = "الصلاة";
+    
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => AzanFullScreen(
+          prayerName: prayerName,
+          onDismiss: () async {
+            final navigator = Navigator.of(context);
+            await _nativeChannel.invokeMethod('stopAzan');
+            navigator.pop();
+            if (mounted) setState(() => _isModalShowing = false);
+          },
+        ),
+        fullscreenDialog: true,
+      ),
+    ).then((_) => _isModalShowing = false);
+    
+    _isModalShowing = true;
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _notifSubscription?.cancel();
     _audioPlayer.dispose();
     super.dispose();
@@ -85,16 +134,6 @@ class _MainNavigationState extends State<MainNavigation> {
         // Use Media stream (music) which follows VolumeController's standard setVolume()
         await VolumeController.instance.setVolume(provider.azanVolume);
         
-        await _audioPlayer.setAudioContext(
-          AudioContext(
-            android: AudioContextAndroid(
-              usageType: AndroidUsageType.media,
-              audioFocus: AndroidAudioFocus.gainTransientMayDuck,
-              contentType: AndroidContentType.music,
-            ),
-          ),
-        );
-
         await _audioPlayer.stop();
         // Set player volume to full, system volume is handled above
         await _audioPlayer.setVolume(1.0);
@@ -142,9 +181,9 @@ class _MainNavigationState extends State<MainNavigation> {
                     child: SizedBox(
                       width: double.infinity,
                       child: TextButton(
-                        onPressed: () {
+                        onPressed: () async {
                           _audioPlayer.stop();
-                          AzanForegroundService.stop();
+                          await _nativeChannel.invokeMethod('stopAzan');
                         },
                         style: TextButton.styleFrom(
                           foregroundColor: Colors.redAccent,
@@ -156,11 +195,11 @@ class _MainNavigationState extends State<MainNavigation> {
                 SizedBox(
                   width: double.infinity,
                   child: TextButton(
-                    onPressed: () {
+                    onPressed: () async {
                       _audioPlayer.stop();
-                      AzanForegroundService.stop();
+                      await _nativeChannel.invokeMethod('stopAzan');
                       setState(() => _isModalShowing = false);
-                      Navigator.pop(context);
+                      if (mounted) Navigator.pop(context);
                     },
                     style: TextButton.styleFrom(
                       backgroundColor: const Color(0xFFC5A35E),
