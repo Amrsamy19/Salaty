@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:volume_controller/volume_controller.dart';
@@ -124,22 +125,19 @@ class _MainNavigationState extends State<MainNavigation> with WidgetsBindingObse
     bool isAzkar = payload == 'Azkar';
     String prayerName = payload.replaceFirst(' High', '');
     
-    // Play Azan sound if not Azkar
-    if (!isAzkar) {
+    // Play Azan sound if not Azkar (ONLY if NOT on Android, because Android uses Native AzanService)
+    if (!isAzkar && !Platform.isAndroid) {
       try {
         final provider = context.read<PrayerProvider>();
         final sound = provider.selectedAzanSound;
-        debugPrint('MainNavigation: Playing Azan modal sound: $sound at volume ${provider.azanVolume}');
+        debugPrint('MainNavigation: Playing Azan modal sound (Flutter fallback): $sound');
         
-        // Use Media stream (music) which follows VolumeController's standard setVolume()
         await VolumeController.instance.setVolume(provider.azanVolume);
-        
         await _audioPlayer.stop();
-        // Set player volume to full, system volume is handled above
         await _audioPlayer.setVolume(1.0);
         await _audioPlayer.play(AssetSource('audio/$sound'));
       } catch (e) {
-        debugPrint('MainNavigation: Error playing sound: $e');
+        debugPrint('MainNavigation: Error playing sound in Flutter: $e');
       }
     }
 

@@ -2,16 +2,30 @@ package com.example.salaty_v1
 
 import android.app.*
 import android.content.Intent
+import android.content.pm.ServiceInfo
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.media.MediaPlayer
+import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import android.util.Log
 
 class AzanService : Service() {
 
     private var mediaPlayer: MediaPlayer? = null
+    private var wakeLock: PowerManager.WakeLock? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Start Foreground immediately to satisfy Android's 5-second rule
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(1001, createNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+        } else {
+            startForeground(1001, createNotification())
+        }
+
         if (intent?.action == "STOP_AZAN") {
             Log.d("AzanService", "Stopping Azan per user request")
             stopSelf()
@@ -19,14 +33,28 @@ class AzanService : Service() {
         }
 
         val soundName = intent?.getStringExtra("sound") ?: "makah"
-        Log.d("AzanService", "Starting Azan service with sound: $soundName")
+        val volume = intent?.getFloatExtra("volume", 1.0f) ?: 1.0f
+        val prayerName = intent?.getStringExtra("prayerName") ?: "الصلاة"
+        Log.d("AzanService", "Starting Azan service with sound: $soundName, volume: $volume, prayer: $prayerName")
+
+        // 1. Acquire WakeLock to ensure system doesn't sleep during playback
+        val powerManager = getSystemService(POWER_SERVICE) as PowerManager
+        wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Salaty:AzanWakeLock")
+        wakeLock?.acquire(5 * 60 * 1000L /*5 minutes max*/)
 
         val resId = resources.getIdentifier(soundName, "raw", packageName)
         
         if (resId != 0) {
             mediaPlayer = MediaPlayer.create(this, resId)
-            // 🔥 IMPORTANT: Alarm stream (bypass silent)
-            mediaPlayer?.setAudioStreamType(android.media.AudioManager.STREAM_ALARM)
+            
+            // 2. Configure Audio Attributes (Alarm stream)
+            val audioAttributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ALARM)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .build()
+            
+            mediaPlayer?.setAudioAttributes(audioAttributes)
+            mediaPlayer?.setVolume(volume, volume)
             mediaPlayer?.isLooping = false
             mediaPlayer?.start()
 
@@ -39,8 +67,6 @@ class AzanService : Service() {
             Log.e("AzanService", "Resource not found for sound: $soundName")
             stopSelf()
         }
-
-        startForeground(1001, createNotification())
 
         return START_NOT_STICKY
     }
@@ -94,13 +120,16 @@ class AzanService : Service() {
             .setContentIntent(contentPendingIntent)
             .setFullScreenIntent(contentPendingIntent, true)
             .setStyle(NotificationCompat.BigTextStyle().bigText("حان الآن موعد الصلاة - جاري تشغيل الأذان"))
-            .addAction(android.R.drawable.ic_delete, "إيقاف الأذان", stopPendingIntent)
+            .addAction(android.R.drawable.ic_notification_clear_all, "إيقاف الأذان", stopPendingIntent)
             .build()
     }
 
     override fun onDestroy() {
         Log.d("AzanService", "AzanService destroyed")
         mediaPlayer?.release()
+        if (wakeLock?.isHeld == true) {
+            wakeLock?.release()
+        }
         super.onDestroy()
     }
 

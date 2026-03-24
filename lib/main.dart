@@ -10,13 +10,8 @@ import 'features/quran/providers/quran_provider.dart';
 import 'screens/main_navigation.dart';
 import 'l10n/app_localizations.dart';
 
-import 'services/azan_foreground_service.dart';
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize Background Services
-  AzanForegroundService.init();
   
   await initializeDateFormatting('ar', null);
 

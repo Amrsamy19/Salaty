@@ -24,7 +24,9 @@ class MainActivity: FlutterActivity() {
                     "scheduleAzan" -> {
                         val time = call.argument<Long>("time")!!
                         val sound = call.argument<String>("sound")!!
-                        scheduleAzan(time, sound)
+                        val volume = call.argument<Double>("volume") ?: 1.0
+                        val prayerName = call.argument<String>("prayerName") ?: "الصلاة"
+                        scheduleAzan(time, sound, volume.toFloat(), prayerName)
                         result.success(null)
                     }
                     "cancelAllAlarms" -> {
@@ -54,9 +56,12 @@ class MainActivity: FlutterActivity() {
         // FLAG_UPDATE_CURRENT in scheduleAzan handles single-alarm replacement.
     }
 
-    private fun scheduleAzan(time: Long, sound: String) {
-        val intent = Intent(this, AzanReceiver::class.java)
-        intent.putExtra("sound", sound)
+    private fun scheduleAzan(time: Long, sound: String, volume: Float, prayerName: String) {
+        val intent = Intent(this, AzanReceiver::class.java).apply {
+            putExtra("sound", sound)
+            putExtra("volume", volume)
+            putExtra("prayerName", prayerName)
+        }
 
         val pendingIntent = PendingIntent.getBroadcast(
             this,

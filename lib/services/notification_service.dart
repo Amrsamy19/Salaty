@@ -217,6 +217,8 @@ class NotificationService {
       await platform.invokeMethod('scheduleAzan', {
         'time': scheduledTime.millisecondsSinceEpoch,
         'sound': azanSound.split('.').first,
+        'volume': azanVolume,
+        'prayerName': 'تجربة الأذان',
       });
     }
     
@@ -279,36 +281,32 @@ class NotificationService {
 
       if (time.isAfter(DateTime.now())) {
         try {
-          await flutterLocalNotificationsPlugin.zonedSchedule(
-            id: i,
-            title: isAzkar ? prayerName : 'حان الآن موعد صلاة $prayerName',
-            body: isAzkar ? 'لا تنس ذكر الله' : 'أقم صلاتك يا عبد الله',
-            payload: isAzkar ? 'Azkar' : prayerName,
-            scheduledDate: tz.TZDateTime.from(time, tz.local),
-            notificationDetails: NotificationDetails(
-              android: AndroidNotificationDetails(
-                isAzkar
-                    ? 'azkar_channel_v11'
-                    : 'prayer_channel_${azanSound.split('.').first}_v31',
-                isAzkar ? 'تنبيهات الأذكار' : 'تنبيهات الصلاة',
-                importance: Importance.max,
-                priority: Priority.max,
-                playSound: isAzkar, // Audio only for Azkar via system
-                sound: isAzkar
-                    ? null
-                    : null, // Azan is handled by ForegroundService Audio Engine
-                audioAttributesUsage: AudioAttributesUsage.alarm,
-                fullScreenIntent: true,
-                category: AndroidNotificationCategory.alarm,
+          if (isAzkar) {
+            // Use local notifications for Azkar and Ayah (Simple Notification)
+            await flutterLocalNotificationsPlugin.zonedSchedule(
+              id: i,
+              title: prayerName,
+              body: 'لا تنس ذكر الله',
+              payload: 'Azkar',
+              scheduledDate: tz.TZDateTime.from(time, tz.local),
+              notificationDetails: const NotificationDetails(
+                android: AndroidNotificationDetails(
+                  'azkar_channel_v11',
+                  'تنبيهات الأذكار',
+                  importance: Importance.max,
+                  priority: Priority.max,
+                  playSound: true,
+                ),
               ),
-            ),
-            androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-          );
-
-          if (Platform.isAndroid && !isAzkar) {
+              androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+            );
+          } else if (Platform.isAndroid) {
+            // 🔥 Use ONLY Native AlarmManager for Azan (Ensures Reliability)
             await platform.invokeMethod('scheduleAzan', {
               'time': time.millisecondsSinceEpoch,
               'sound': azanSound.split('.').first,
+              'volume': azanVolume,
+              'prayerName': prayerName,
             });
           }
         } catch (e) {
