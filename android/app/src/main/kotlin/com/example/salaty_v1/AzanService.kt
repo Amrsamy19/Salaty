@@ -14,6 +14,7 @@ import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import android.util.Log
 import org.json.JSONObject
+import kotlin.math.roundToInt
 
 class AzanService : Service() {
 
@@ -34,8 +35,11 @@ class AzanService : Service() {
             // Map 0..1 -> 1..max (avoid 0 so it doesn't become silent unintentionally).
             fun target(stream: Int): Int {
                 val max = audioManager.getStreamMaxVolume(stream).coerceAtLeast(1)
-                val t = (clamped * max).toInt().coerceIn(1, max)
-                return t
+                // Use rounding instead of floor to avoid "almost 1.0" ending up one step below max.
+                // Also explicitly treat near-1.0 as max.
+                if (clamped >= 0.99f) return max
+                val t = (clamped * max).roundToInt().coerceIn(1, max)
+                return t.coerceIn(1, max)
             }
 
             audioManager.setStreamVolume(AudioManager.STREAM_ALARM, target(AudioManager.STREAM_ALARM), 0)
