@@ -8,8 +8,17 @@ import android.content.Intent
 import android.os.Build
 import android.util.Log
 import org.json.JSONObject
+import kotlin.math.abs
 
 class BootReceiver : BroadcastReceiver() {
+    private fun buildRequestCode(timeMs: Long, prayerName: String): Int {
+        val seconds = timeMs / 1000L
+        val mixed = seconds xor prayerName.hashCode().toLong()
+        val folded = (mixed xor (mixed ushr 32)).toInt()
+        val positive = abs(folded.toLong()).toInt()
+        return if (positive == 0) 1 else positive
+    }
+
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED ||
             intent.action == "android.intent.action.QUICKBOOT_POWERON" ||
@@ -38,20 +47,28 @@ class BootReceiver : BroadcastReceiver() {
                         putExtra("volume", volume)
                         putExtra("prayerName", prayerName)
                     }
-                    val requestCode = time.toInt()
+                    val requestCode = if (obj.has("requestCode")) obj.getInt("requestCode") else buildRequestCode(time, prayerName)
                     val pendingIntent = PendingIntent.getBroadcast(
                         context, requestCode, alarmIntent,
                         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                     )
 
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        alarmManager.setExactAndAllowWhileIdle(
-                            AlarmManager.RTC_WAKEUP, time, pendingIntent
-                        )
-                    } else {
-                        alarmManager.setExact(
-                            AlarmManager.RTC_WAKEUP, time, pendingIntent
-                        )
+                    try {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            alarmManager.setExactAndAllowWhileIdle(
+                                AlarmManager.RTC_WAKEUP, time, pendingIntent
+                            )
+                        } else {
+                            alarmManager.setExact(
+                                AlarmManager.RTC_WAKEUP, time, pendingIntent
+                            )
+                        }
+                    } catch (se: SecurityException) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, time, pendingIntent)
+                        } else {
+                            alarmManager.set(AlarmManager.RTC_WAKEUP, time, pendingIntent)
+                        }
                     }
                 } catch (e: Exception) {
                     Log.e("BootReceiver", "Failed to reschedule alarm: $e")

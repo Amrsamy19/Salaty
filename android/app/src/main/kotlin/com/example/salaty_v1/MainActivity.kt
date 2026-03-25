@@ -11,6 +11,7 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import org.json.JSONObject
+import kotlin.math.abs
 
 class MainActivity: FlutterActivity() {
     private val CHANNEL = "azan_channel"
@@ -76,8 +77,19 @@ class MainActivity: FlutterActivity() {
         prefs.edit().remove("alarm_ids").remove("saved_alarms_json").apply()
     }
 
+    private fun buildRequestCode(timeMs: Long, prayerName: String): Int {
+        // PendingIntent requestCode must be an Int. Avoid overflow from epoch millis and reduce collisions.
+        // Combine seconds-since-epoch with prayer name hash, then fold into a positive Int.
+        val seconds = timeMs / 1000L
+        val mixed = seconds xor prayerName.hashCode().toLong()
+        val folded = (mixed xor (mixed ushr 32)).toInt()
+        // abs(Int.MIN_VALUE) is still negative, so use Long for abs then clamp.
+        val positive = abs(folded.toLong()).toInt()
+        return if (positive == 0) 1 else positive
+    }
+
     private fun scheduleAzan(time: Long, sound: String, volume: Float, prayerName: String) {
-        val requestCode = time.toInt()
+        val requestCode = buildRequestCode(time, prayerName)
         val intent = Intent(this, AzanReceiver::class.java).apply {
             putExtra("sound", sound)
             putExtra("volume", volume)
@@ -93,18 +105,27 @@ class MainActivity: FlutterActivity() {
 
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            alarmManager.setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                time,
-                pendingIntent
-            )
-        } else {
-            alarmManager.setExact(
-                AlarmManager.RTC_WAKEUP,
-                time,
-                pendingIntent
-            )
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    time,
+                    pendingIntent
+                )
+            } else {
+                alarmManager.setExact(
+                    AlarmManager.RTC_WAKEUP,
+                    time,
+                    pendingIntent
+                )
+            }
+        } catch (se: SecurityException) {
+            // If exact alarms aren't allowed, fall back to a best-effort alarm.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, time, pendingIntent)
+            } else {
+                alarmManager.set(AlarmManager.RTC_WAKEUP, time, pendingIntent)
+            }
         }
 
         // Save for cancellation and boot recovery
@@ -117,6 +138,7 @@ class MainActivity: FlutterActivity() {
         // 2. Save full data for BootReceiver
         val alarmData = JSONObject().apply {
             put("time", time)
+            put("requestCode", requestCode)
             put("sound", sound)
             put("volume", volume.toDouble())
             put("prayerName", prayerName)
