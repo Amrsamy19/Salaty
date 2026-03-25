@@ -155,7 +155,10 @@ class NextPrayerCountdownHandler extends TaskHandler {
     final String? nextPrayerName =
         await FlutterForegroundTask.getData<String>(key: 'nextPrayerName');
 
-    if (nextPrayerTimeMs == null || nextPrayerName == null) {
+    if (nextPrayerTimeMs == null ||
+        nextPrayerName == null ||
+        nextPrayerTimeMs <= 0 ||
+        nextPrayerName.trim().isEmpty) {
       await FlutterForegroundTask.updateService(
         notificationText: 'افتح التطبيق لتحديث مواقيت الصلاة',
       );
@@ -235,6 +238,24 @@ class NextPrayerCountdownService {
     await FlutterForegroundTask.startService(
       notificationTitle: 'العداد القادم للصلاة',
       notificationText: 'جارٍ الحساب...',
+      callback: nextPrayerStartCallback,
+    );
+  }
+
+  static Future<void> startPlaceholder({bool autoRunOnBoot = false}) async {
+    init(autoRunOnBoot: autoRunOnBoot);
+
+    await FlutterForegroundTask.saveData(key: 'nextPrayerTimeMs', value: 0);
+    await FlutterForegroundTask.saveData(key: 'nextPrayerName', value: '');
+
+    if (await FlutterForegroundTask.isRunningService) {
+      await FlutterForegroundTask.updateService(callback: nextPrayerStartCallback);
+      return;
+    }
+
+    await FlutterForegroundTask.startService(
+      notificationTitle: 'العداد القادم للصلاة',
+      notificationText: 'افتح التطبيق لتحديث مواقيت الصلاة',
       callback: nextPrayerStartCallback,
     );
   }

@@ -262,6 +262,9 @@ class PrayerProvider with ChangeNotifier {
       await NextPrayerCountdownService.stop();
       return;
     }
+    // Start immediately so user sees the persistent notification even if prayer times
+    // aren't ready yet (e.g., location still resolving).
+    await NextPrayerCountdownService.startPlaceholder(autoRunOnBoot: false);
     if (_prayerTimes == null) return;
 
     final next = _prayerTimes!.nextPrayer();
