@@ -19,6 +19,45 @@ class AzanService : Service() {
 
     private var mediaPlayer: MediaPlayer? = null
     private var wakeLock: PowerManager.WakeLock? = null
+    private var previousAlarmVolume: Int? = null
+    private var previousMusicVolume: Int? = null
+
+    private fun applySystemVolume(userLevel01: Float) {
+        try {
+            val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
+            val clamped = userLevel01.coerceIn(0.0f, 1.0f)
+
+            // Save current volumes once (first time we apply).
+            if (previousAlarmVolume == null) previousAlarmVolume = audioManager.getStreamVolume(AudioManager.STREAM_ALARM)
+            if (previousMusicVolume == null) previousMusicVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+
+            // Map 0..1 -> 1..max (avoid 0 so it doesn't become silent unintentionally).
+            fun target(stream: Int): Int {
+                val max = audioManager.getStreamMaxVolume(stream).coerceAtLeast(1)
+                val t = (clamped * max).toInt().coerceIn(1, max)
+                return t
+            }
+
+            audioManager.setStreamVolume(AudioManager.STREAM_ALARM, target(AudioManager.STREAM_ALARM), 0)
+            // Some devices route MediaPlayer alarms through MUSIC; set both for consistency.
+            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, target(AudioManager.STREAM_MUSIC), 0)
+        } catch (e: Exception) {
+            Log.w("AzanService", "Failed to set system volume: $e")
+        }
+    }
+
+    private fun restoreSystemVolume() {
+        try {
+            val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
+            previousAlarmVolume?.let { audioManager.setStreamVolume(AudioManager.STREAM_ALARM, it, 0) }
+            previousMusicVolume?.let { audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, it, 0) }
+        } catch (e: Exception) {
+            Log.w("AzanService", "Failed to restore system volume: $e")
+        } finally {
+            previousAlarmVolume = null
+            previousMusicVolume = null
+        }
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // Start Foreground immediately to satisfy Android's 5-second rule
@@ -30,6 +69,7 @@ class AzanService : Service() {
 
         if (intent?.action == "STOP_AZAN") {
             Log.d("AzanService", "Stopping Azan per user request")
+            restoreSystemVolume()
             stopSelf()
             return START_NOT_STICKY
         }
@@ -62,6 +102,9 @@ class AzanService : Service() {
         
         Log.d("AzanService", "Azan triggered. Sound: $soundName, User Volume: $resolvedVolume, Prayer: $prayerName")
 
+        // Set phone system volume to the user's azan level.
+        applySystemVolume(resolvedVolume)
+
         // 2. Acquire WakeLock to ensure system doesn't sleep during playback
         val powerManager = getSystemService(POWER_SERVICE) as PowerManager
         wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Salaty:AzanWakeLock")
@@ -86,10 +129,12 @@ class AzanService : Service() {
             // Stop service when done
             mediaPlayer?.setOnCompletionListener {
                 Log.d("AzanService", "Playback complete, stopping service")
+                restoreSystemVolume()
                 stopSelf()
             }
         } else {
             Log.e("AzanService", "Resource not found for sound: $soundName")
+            restoreSystemVolume()
             stopSelf()
         }
 
@@ -151,6 +196,7 @@ class AzanService : Service() {
 
     override fun onDestroy() {
         Log.d("AzanService", "AzanService destroyed")
+        restoreSystemVolume()
         mediaPlayer?.release()
         if (wakeLock?.isHeld == true) {
             wakeLock?.release()
