@@ -407,7 +407,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             Switch(
               value: provider.keepCountdownNotification,
-              activeColor: _gold,
+              activeThumbColor: _gold,
               onChanged: (v) => provider.setKeepCountdownNotification(v),
             ),
           ],

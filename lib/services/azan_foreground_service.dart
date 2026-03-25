@@ -144,6 +144,11 @@ class NextPrayerCountdownHandler extends TaskHandler {
     _updateCountdown();
   }
 
+  @override
+  Future<void> onDestroy(DateTime timestamp, bool startingBackground) async {
+    // No resources to dispose.
+  }
+
   Future<void> _updateCountdown() async {
     final int? nextPrayerTimeMs =
         await FlutterForegroundTask.getData<int>(key: 'nextPrayerTimeMs');
@@ -171,7 +176,7 @@ class NextPrayerCountdownHandler extends TaskHandler {
     final totalMinutes = (diff / 60000).floor();
     final hours = totalMinutes ~/ 60;
     final minutes = totalMinutes % 60;
-    final countdown = hours > 0 ? '${hours}س ${minutes}د' : '${minutes}د';
+    final countdown = hours > 0 ? '$hoursس $minutesد' : '$minutesد';
 
     await FlutterForegroundTask.updateService(
       notificationTitle: 'الصلاة القادمة: $nextPrayerName',
