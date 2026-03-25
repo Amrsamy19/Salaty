@@ -5,6 +5,7 @@ import 'package:hijri/hijri_calendar.dart';
 import '../services/location_service.dart';
 import '../services/prayer_service.dart';
 import '../services/notification_service.dart';
+import '../services/azan_foreground_service.dart';
 import '../models/tracker_model.dart';
 import 'package:intl/intl.dart';
 
@@ -47,6 +48,7 @@ class PrayerProvider with ChangeNotifier {
     'أذكار المساء': true,
   };
   double _azanVolume = 1.0;
+  bool _keepCountdownNotification = false;
   Color _primaryColor = brandGold;
   final Color _accentColor  = brandGold;
 
@@ -65,6 +67,7 @@ class PrayerProvider with ChangeNotifier {
   String get selectedAzanSound => _selectedAzanSound;
   Map<String, bool> get notifMap => _notifMap;
   double get azanVolume => _azanVolume;
+  bool get keepCountdownNotification => _keepCountdownNotification;
   Color get primaryColor => _primaryColor;
   Color get accentColor => _accentColor;
   Locale get locale => _locale;
@@ -115,6 +118,7 @@ class PrayerProvider with ChangeNotifier {
       await loadSettings();
       await _notificationService.setNativeAzanVolume(_azanVolume);
       await refreshPrayerTimes();
+      await _syncNextPrayerCountdownService();
       await loadTracker();
     } catch (e, st) {
       errorMessage = "$e\n$st";
@@ -154,6 +158,7 @@ class PrayerProvider with ChangeNotifier {
       _fontSizeMultiplier = settings['fontSize'] ?? 1.0;
       _selectedAzanSound = settings['azanSound'] ?? 'makah.mp3';
       _azanVolume = settings['azanVolume'] ?? 1.0;
+      _keepCountdownNotification = settings['keepCountdownNotification'] ?? false;
       if (settings['notifMap'] != null) {
         _notifMap = Map<String, bool>.from(settings['notifMap']);
         if (!_notifMap.containsKey('أذكار الصباح')) _notifMap['أذكار الصباح'] = true;
@@ -173,12 +178,14 @@ class PrayerProvider with ChangeNotifier {
       'fontSize': _fontSizeMultiplier,
       'azanSound': _selectedAzanSound,
       'azanVolume': _azanVolume,
+      'keepCountdownNotification': _keepCountdownNotification,
       'notifMap': _notifMap,
       'primaryColor': _primaryColor.toARGB32(),
       'locale': _locale.languageCode,
     });
     
     await _notificationService.setNativeAzanVolume(_azanVolume);
+    await _syncNextPrayerCountdownService();
 
     if (_prayerTimes != null) {
       await _notificationService.schedulePrayerNotifications(
@@ -214,6 +221,12 @@ class PrayerProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setKeepCountdownNotification(bool enabled) async {
+    _keepCountdownNotification = enabled;
+    await saveSettings();
+    notifyListeners();
+  }
+
   void updateAzanVolumeUI(double volume) {
     _azanVolume = volume;
     notifyListeners();
@@ -240,7 +253,39 @@ class PrayerProvider with ChangeNotifier {
         enabledPrayers: _notifMap,
       );
     }
+    await _syncNextPrayerCountdownService();
     notifyListeners();
+  }
+
+  Future<void> _syncNextPrayerCountdownService() async {
+    if (!_keepCountdownNotification) {
+      await NextPrayerCountdownService.stop();
+      return;
+    }
+    if (_prayerTimes == null) return;
+
+    final next = _prayerTimes!.nextPrayer();
+    if (next == Prayer.none) return;
+    final time = _prayerTimes!.timeForPrayer(next);
+    if (time == null) return;
+
+    // Use Arabic names to match UI.
+    final Map<Prayer, String> names = {
+      Prayer.fajr: 'الفجر',
+      Prayer.dhuhr: 'الظهر',
+      Prayer.asr: 'العصر',
+      Prayer.maghrib: 'المغرب',
+      Prayer.isha: 'العشاء',
+      Prayer.sunrise: 'الشروق',
+    };
+    final name = names[next] ?? 'الصلاة';
+
+    await NextPrayerCountdownService.startOrUpdate(
+      nextPrayerTimeMs: time.millisecondsSinceEpoch,
+      nextPrayerName: name,
+      // Keep conservative: don't auto-run on boot unless you want it.
+      autoRunOnBoot: false,
+    );
   }
 
   Future<void> testPrayerNotification() async {

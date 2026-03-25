@@ -132,3 +132,116 @@ class AzanForegroundService {
 void startCallback() {
   FlutterForegroundTask.setTaskHandler(AzanForegroundHandler());
 }
+
+class NextPrayerCountdownHandler extends TaskHandler {
+  @override
+  Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
+    await _updateCountdown();
+  }
+
+  @override
+  void onRepeatEvent(DateTime timestamp) {
+    _updateCountdown();
+  }
+
+  Future<void> _updateCountdown() async {
+    final int? nextPrayerTimeMs =
+        await FlutterForegroundTask.getData<int>(key: 'nextPrayerTimeMs');
+    final String? nextPrayerName =
+        await FlutterForegroundTask.getData<String>(key: 'nextPrayerName');
+
+    if (nextPrayerTimeMs == null || nextPrayerName == null) {
+      await FlutterForegroundTask.updateService(
+        notificationText: 'افتح التطبيق لتحديث مواقيت الصلاة',
+      );
+      return;
+    }
+
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final diff = nextPrayerTimeMs - now;
+
+    if (diff <= 0) {
+      await FlutterForegroundTask.updateService(
+        notificationTitle: 'حان الآن موعد الصلاة',
+        notificationText: 'جاري الانتظار للتحديث...',
+      );
+      return;
+    }
+
+    final totalMinutes = (diff / 60000).floor();
+    final hours = totalMinutes ~/ 60;
+    final minutes = totalMinutes % 60;
+    final countdown = hours > 0 ? '${hours}س ${minutes}د' : '${minutes}د';
+
+    await FlutterForegroundTask.updateService(
+      notificationTitle: 'الصلاة القادمة: $nextPrayerName',
+      notificationText: 'متبقي: $countdown',
+    );
+  }
+}
+
+class NextPrayerCountdownService {
+  static void init({bool autoRunOnBoot = false}) {
+    FlutterForegroundTask.init(
+      androidNotificationOptions: AndroidNotificationOptions(
+        channelId: 'next_prayer_countdown_channel',
+        channelName: 'العداد القادم للصلاة',
+        channelDescription: 'يعرض عدادًا للصلاة القادمة في إشعار دائم',
+        channelImportance: NotificationChannelImportance.LOW,
+        priority: NotificationPriority.LOW,
+      ),
+      iosNotificationOptions: const IOSNotificationOptions(
+        showNotification: true,
+        playSound: false,
+      ),
+      foregroundTaskOptions: ForegroundTaskOptions(
+        // Update every minute
+        eventAction: ForegroundTaskEventAction.repeat(60 * 1000),
+        autoRunOnBoot: autoRunOnBoot,
+        allowWakeLock: true,
+        allowWifiLock: false,
+      ),
+    );
+  }
+
+  static Future<void> startOrUpdate({
+    required int nextPrayerTimeMs,
+    required String nextPrayerName,
+    bool autoRunOnBoot = false,
+  }) async {
+    init(autoRunOnBoot: autoRunOnBoot);
+
+    await FlutterForegroundTask.saveData(
+      key: 'nextPrayerTimeMs',
+      value: nextPrayerTimeMs,
+    );
+    await FlutterForegroundTask.saveData(
+      key: 'nextPrayerName',
+      value: nextPrayerName,
+    );
+
+    if (await FlutterForegroundTask.isRunningService) {
+      await FlutterForegroundTask.updateService(
+        callback: nextPrayerStartCallback,
+      );
+      return;
+    }
+
+    await FlutterForegroundTask.startService(
+      notificationTitle: 'العداد القادم للصلاة',
+      notificationText: 'جارٍ الحساب...',
+      callback: nextPrayerStartCallback,
+    );
+  }
+
+  static Future<void> stop() async {
+    if (await FlutterForegroundTask.isRunningService) {
+      await FlutterForegroundTask.stopService();
+    }
+  }
+}
+
+@pragma('vm:entry-point')
+void nextPrayerStartCallback() {
+  FlutterForegroundTask.setTaskHandler(NextPrayerCountdownHandler());
+}

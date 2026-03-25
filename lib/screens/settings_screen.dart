@@ -84,6 +84,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _sectionHeader(l.isAr ? 'مستوى صوت الأذان' : 'Azan Volume'),
               _buildAzanVolumeCard(provider, l),
               const SizedBox(height: 20),
+              _sectionHeader(l.isAr ? 'إشعار دائم' : 'Persistent notification'),
+              _buildCountdownServiceCard(provider, l),
+              const SizedBox(height: 20),
               _sectionHeader(l.notifications),
               _buildNotifCard(provider, l),
               const SizedBox(height: 20),
@@ -369,6 +372,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Text(l.isAr ? 'مرتفع' : 'High', style: const TextStyle(color: _slate, fontSize: 12)),
                 ],
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCountdownServiceCard(PrayerProvider provider, AppLocalizations l) {
+    return _card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Icon(Icons.timer_outlined, color: provider.keepCountdownNotification ? _gold : _slate, size: 22),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l.isAr ? 'تشغيل إشعار دائم بعداد الصلاة القادمة' : 'Keep a persistent next-prayer countdown',
+                    style: const TextStyle(color: _cream, fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    l.isAr
+                        ? 'سيبقى إشعار في شريط الحالة ويُحدّث العداد كل دقيقة حتى لو أغلقت التطبيق.'
+                        : 'Shows an ongoing notification and updates every minute, even when the app is closed.',
+                    style: TextStyle(color: _slate.withValues(alpha: 0.9), fontSize: 12, height: 1.3),
+                  ),
+                ],
+              ),
+            ),
+            Switch(
+              value: provider.keepCountdownNotification,
+              activeColor: _gold,
+              onChanged: (v) => provider.setKeepCountdownNotification(v),
             ),
           ],
         ),

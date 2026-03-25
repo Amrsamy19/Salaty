@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:volume_controller/volume_controller.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'providers/prayer_provider.dart';
 import 'features/quran/providers/quran_provider.dart';
 import 'screens/main_navigation.dart';
@@ -12,6 +13,7 @@ import 'l10n/app_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  FlutterForegroundTask.initCommunicationPort();
   
   await initializeDateFormatting('ar', null);
 
@@ -31,7 +33,9 @@ void main() async {
         ChangeNotifierProvider(create: (_) => PrayerProvider()..init()),
         ChangeNotifierProvider(create: (_) => QuranProvider()),
       ],
-      child: const MyApp(),
+      child: const WithForegroundTask(
+        child: MyApp(),
+      ),
     ),
   );
 }
