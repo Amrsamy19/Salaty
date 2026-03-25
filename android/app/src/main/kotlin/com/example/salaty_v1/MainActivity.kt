@@ -10,6 +10,7 @@ import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import org.json.JSONObject
 
 class MainActivity: FlutterActivity() {
     private val CHANNEL = "azan_channel"
@@ -58,11 +59,25 @@ class MainActivity: FlutterActivity() {
     }
 
     private fun cancelAllAlarms() {
-        // Alarms are identified by time.toInt(). Without storage, we can't easily cancel all.
-        // FLAG_UPDATE_CURRENT in scheduleAzan handles single-alarm replacement.
+        val prefs = getSharedPreferences("salaty_prefs", Context.MODE_PRIVATE)
+        val alarmIds = prefs.getStringSet("alarm_ids", emptySet()) ?: emptySet()
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+
+        for (idStr in alarmIds) {
+            val requestCode = idStr.toIntOrNull() ?: continue
+            val intent = Intent(this, AzanReceiver::class.java)
+            val pendingIntent = PendingIntent.getBroadcast(
+                this, requestCode, intent,
+                PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+            )
+            pendingIntent?.let { alarmManager.cancel(it) }
+        }
+
+        prefs.edit().remove("alarm_ids").remove("saved_alarms_json").apply()
     }
 
     private fun scheduleAzan(time: Long, sound: String, volume: Float, prayerName: String) {
+        val requestCode = time.toInt()
         val intent = Intent(this, AzanReceiver::class.java).apply {
             putExtra("sound", sound)
             putExtra("volume", volume)
@@ -71,7 +86,7 @@ class MainActivity: FlutterActivity() {
 
         val pendingIntent = PendingIntent.getBroadcast(
             this,
-            time.toInt(),
+            requestCode,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -91,6 +106,29 @@ class MainActivity: FlutterActivity() {
                 pendingIntent
             )
         }
+
+        // Save for cancellation and boot recovery
+        val prefs = getSharedPreferences("salaty_prefs", Context.MODE_PRIVATE)
+        
+        // 1. Save ID for cancellation
+        val existingIds = prefs.getStringSet("alarm_ids", mutableSetOf())?.toMutableSet() ?: mutableSetOf()
+        existingIds.add(requestCode.toString())
+        
+        // 2. Save full data for BootReceiver
+        val alarmData = JSONObject().apply {
+            put("time", time)
+            put("sound", sound)
+            put("volume", volume.toDouble())
+            put("prayerName", prayerName)
+        }.toString()
+        
+        val existingAlarms = prefs.getStringSet("saved_alarms_json", mutableSetOf())?.toMutableSet() ?: mutableSetOf()
+        existingAlarms.add(alarmData)
+        
+        prefs.edit()
+            .putStringSet("alarm_ids", existingIds)
+            .putStringSet("saved_alarms_json", existingAlarms)
+            .apply()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

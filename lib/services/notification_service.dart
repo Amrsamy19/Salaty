@@ -76,6 +76,17 @@ class NotificationService {
           playSound: true,
         ),
       );
+      
+      // Daily Quote Channel
+      await androidImplementation?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'daily_quote_channel',
+          'آية أو حديث اليوم',
+          description: 'آية يومية من القرآن الكريم',
+          importance: Importance.defaultImportance,
+          playSound: true,
+        ),
+      );
     }
 
     // Request permissions for Android 13+
