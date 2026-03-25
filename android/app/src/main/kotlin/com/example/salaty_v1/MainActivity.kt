@@ -106,25 +106,34 @@ class MainActivity: FlutterActivity() {
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                alarmManager.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    time,
-                    pendingIntent
-                )
-            } else {
-                alarmManager.setExact(
-                    AlarmManager.RTC_WAKEUP,
-                    time,
-                    pendingIntent
-                )
+            // Use AlarmClock for maximum reliability across OEMs (treated as "real alarm").
+            // This is the closest match to Azan behavior (time-critical, user-visible).
+            val showIntent = Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("full_screen_azan", true)
+                putExtra("prayerName", prayerName)
             }
+            val showPendingIntent = PendingIntent.getActivity(
+                this,
+                // keep distinct from the broadcast PendingIntent
+                requestCode + 1,
+                showIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(time, showPendingIntent), pendingIntent)
         } catch (se: SecurityException) {
             // If exact alarms aren't allowed, fall back to a best-effort alarm.
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, time, pendingIntent)
             } else {
                 alarmManager.set(AlarmManager.RTC_WAKEUP, time, pendingIntent)
+            }
+        } catch (t: Throwable) {
+            // Defensive fallback for OEM-specific AlarmClock issues
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, time, pendingIntent)
+            } else {
+                alarmManager.setExact(AlarmManager.RTC_WAKEUP, time, pendingIntent)
             }
         }
 

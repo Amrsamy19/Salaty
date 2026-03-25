@@ -13,6 +13,7 @@ import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import android.util.Log
+import org.json.JSONObject
 
 class AzanService : Service() {
 
@@ -36,11 +37,30 @@ class AzanService : Service() {
         val soundName = intent?.getStringExtra("sound") ?: "makah"
         val prayerName = intent?.getStringExtra("prayerName") ?: "الصلاة"
 
-        // 1. Retrieve Current Volume from SharedPreferences (Single source of truth)
-        val prefs = getSharedPreferences("salaty_prefs", Context.MODE_PRIVATE)
-        val currentVolume = prefs.getFloat("azan_volume", intent?.getFloatExtra("volume", 1.0f) ?: 1.0f)
+        // Retrieve Current Volume (single source of truth: settings slider).
+        // Prefer the dedicated native pref written via method channel, but also fall back to Flutter SharedPreferences.
+        val fallbackVolume = intent?.getFloatExtra("volume", 1.0f) ?: 1.0f
+        val salatyPrefs = getSharedPreferences("salaty_prefs", Context.MODE_PRIVATE)
+        var currentVolume: Float? = if (salatyPrefs.contains("azan_volume")) salatyPrefs.getFloat("azan_volume", fallbackVolume) else null
+
+        if (currentVolume == null) {
+            // Flutter's shared_preferences stores in "FlutterSharedPreferences" with "flutter." prefix.
+            try {
+                val flutterPrefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                val settingsJson = flutterPrefs.getString("flutter.app_settings", null)
+                if (!settingsJson.isNullOrBlank()) {
+                    val obj = JSONObject(settingsJson)
+                    val v = obj.optDouble("azanVolume", Double.NaN)
+                    if (!v.isNaN()) currentVolume = v.toFloat()
+                }
+            } catch (e: Exception) {
+                Log.w("AzanService", "Failed reading volume from Flutter prefs: $e")
+            }
+        }
+
+        val resolvedVolume = (currentVolume ?: fallbackVolume).coerceIn(0.0f, 1.0f)
         
-        Log.d("AzanService", "Azan triggered. Sound: $soundName, User Volume: $currentVolume, Prayer: $prayerName")
+        Log.d("AzanService", "Azan triggered. Sound: $soundName, User Volume: $resolvedVolume, Prayer: $prayerName")
 
         // 2. Acquire WakeLock to ensure system doesn't sleep during playback
         val powerManager = getSystemService(POWER_SERVICE) as PowerManager
@@ -59,7 +79,7 @@ class AzanService : Service() {
                 .build()
             
             mediaPlayer?.setAudioAttributes(audioAttributes)
-            mediaPlayer?.setVolume(currentVolume, currentVolume)
+            mediaPlayer?.setVolume(resolvedVolume, resolvedVolume)
             mediaPlayer?.isLooping = false
             mediaPlayer?.start()
 

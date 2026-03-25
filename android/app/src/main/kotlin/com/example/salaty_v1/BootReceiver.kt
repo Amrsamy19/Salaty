@@ -54,20 +54,29 @@ class BootReceiver : BroadcastReceiver() {
                     )
 
                     try {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                            alarmManager.setExactAndAllowWhileIdle(
-                                AlarmManager.RTC_WAKEUP, time, pendingIntent
-                            )
-                        } else {
-                            alarmManager.setExact(
-                                AlarmManager.RTC_WAKEUP, time, pendingIntent
-                            )
+                        val showIntent = Intent(context, MainActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                            putExtra("full_screen_azan", true)
+                            putExtra("prayerName", prayerName)
                         }
+                        val showPendingIntent = PendingIntent.getActivity(
+                            context,
+                            requestCode + 1,
+                            showIntent,
+                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                        )
+                        alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(time, showPendingIntent), pendingIntent)
                     } catch (se: SecurityException) {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                             alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, time, pendingIntent)
                         } else {
                             alarmManager.set(AlarmManager.RTC_WAKEUP, time, pendingIntent)
+                        }
+                    } catch (t: Throwable) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, time, pendingIntent)
+                        } else {
+                            alarmManager.setExact(AlarmManager.RTC_WAKEUP, time, pendingIntent)
                         }
                     }
                 } catch (e: Exception) {
