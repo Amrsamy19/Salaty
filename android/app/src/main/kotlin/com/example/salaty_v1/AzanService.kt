@@ -17,36 +17,65 @@ import org.json.JSONObject
 import kotlin.math.roundToInt
 
 class AzanService : Service() {
-
     private var mediaPlayer: MediaPlayer? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private var previousAlarmVolume: Int? = null
     private var previousMusicVolume: Int? = null
+    private var audioFocusRequest: AudioFocusRequest? = null
 
     private fun applySystemVolume(userLevel01: Float) {
         try {
             val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
             val clamped = userLevel01.coerceIn(0.0f, 1.0f)
 
-            // Save current volumes once (first time we apply).
             if (previousAlarmVolume == null) previousAlarmVolume = audioManager.getStreamVolume(AudioManager.STREAM_ALARM)
             if (previousMusicVolume == null) previousMusicVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
 
-            // Map 0..1 -> 1..max (avoid 0 so it doesn't become silent unintentionally).
             fun target(stream: Int): Int {
                 val max = audioManager.getStreamMaxVolume(stream).coerceAtLeast(1)
-                // Use rounding instead of floor to avoid "almost 1.0" ending up one step below max.
-                // Also explicitly treat near-1.0 as max.
                 if (clamped >= 0.99f) return max
-                val t = (clamped * max).roundToInt().coerceIn(1, max)
-                return t.coerceIn(1, max)
+                return (clamped * max).roundToInt().coerceIn(1, max)
             }
 
             audioManager.setStreamVolume(AudioManager.STREAM_ALARM, target(AudioManager.STREAM_ALARM), 0)
-            // Some devices route MediaPlayer alarms through MUSIC; set both for consistency.
             audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, target(AudioManager.STREAM_MUSIC), 0)
         } catch (e: Exception) {
             Log.w("AzanService", "Failed to set system volume: $e")
+        }
+    }
+
+    private fun requestAudioFocus(): Boolean {
+        val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val playbackAttributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ALARM)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .build()
+            audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+                .setAudioAttributes(playbackAttributes)
+                .setAcceptsDelayedFocusGain(true)
+                .setOnAudioFocusChangeListener { focusChange ->
+                    if (focusChange == AudioManager.AUDIOFOCUS_LOSS || focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
+                        mediaPlayer?.pause()
+                    } else if (focusChange == AudioManager.AUDIOFOCUS_GAIN) {
+                        mediaPlayer?.start()
+                    }
+                }
+                .build()
+            audioManager.requestAudioFocus(audioFocusRequest!!) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        } else {
+            @Suppress("DEPRECATION")
+            audioManager.requestAudioFocus(null, AudioManager.STREAM_ALARM, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        }
+    }
+
+    private fun abandonAudioFocus() {
+        val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            audioFocusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
+        } else {
+            @Suppress("DEPRECATION")
+            audioManager.abandonAudioFocus(null)
         }
     }
 
@@ -64,31 +93,29 @@ class AzanService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // Start Foreground immediately to satisfy Android's 5-second rule
+        val soundName = intent?.getStringExtra("sound") ?: "makah"
+        val prayerName = intent?.getStringExtra("prayerName") ?: "الصلاة"
+
+        // 1. Start Foreground immediately (matching ID 1001 from AzanReceiver)
+        val notification = createNotification(prayerName)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(1001, createNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+            startForeground(1001, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
         } else {
-            startForeground(1001, createNotification())
+            startForeground(1001, notification)
         }
 
         if (intent?.action == "STOP_AZAN") {
             Log.d("AzanService", "Stopping Azan per user request")
-            restoreSystemVolume()
             stopSelf()
             return START_NOT_STICKY
         }
 
-        val soundName = intent?.getStringExtra("sound") ?: "makah"
-        val prayerName = intent?.getStringExtra("prayerName") ?: "الصلاة"
-
-        // Retrieve Current Volume (single source of truth: settings slider).
-        // Prefer the dedicated native pref written via method channel, but also fall back to Flutter SharedPreferences.
+        // Retrieve Current Volume
         val fallbackVolume = intent?.getFloatExtra("volume", 1.0f) ?: 1.0f
         val salatyPrefs = getSharedPreferences("salaty_prefs", Context.MODE_PRIVATE)
         var currentVolume: Float? = if (salatyPrefs.contains("azan_volume")) salatyPrefs.getFloat("azan_volume", fallbackVolume) else null
 
         if (currentVolume == null) {
-            // Flutter's shared_preferences stores in "FlutterSharedPreferences" with "flutter." prefix.
             try {
                 val flutterPrefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
                 val settingsJson = flutterPrefs.getString("flutter.app_settings", null)
@@ -103,23 +130,21 @@ class AzanService : Service() {
         }
 
         val resolvedVolume = (currentVolume ?: fallbackVolume).coerceIn(0.0f, 1.0f)
-        
         Log.d("AzanService", "Azan triggered. Sound: $soundName, User Volume: $resolvedVolume, Prayer: $prayerName")
 
-        // Set phone system volume to the user's azan level.
         applySystemVolume(resolvedVolume)
 
-        // 2. Acquire WakeLock to ensure system doesn't sleep during playback
+        // 2. Acquire WakeLock
         val powerManager = getSystemService(POWER_SERVICE) as PowerManager
         wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Salaty:AzanWakeLock")
-        wakeLock?.acquire(5 * 60 * 1000L /*5 minutes max*/)
+        wakeLock?.acquire(10 * 60 * 1000L /*10 minutes max*/)
+
+        // 3. Audio Focus
+        requestAudioFocus()
 
         val resId = resources.getIdentifier(soundName, "raw", packageName)
-        
         if (resId != 0) {
             mediaPlayer = MediaPlayer.create(this, resId)
-            
-            // 2. Configure Audio Attributes (Alarm stream)
             val audioAttributes = AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_ALARM)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
@@ -130,22 +155,24 @@ class AzanService : Service() {
             mediaPlayer?.isLooping = false
             mediaPlayer?.start()
 
-            // Stop service when done
             mediaPlayer?.setOnCompletionListener {
                 Log.d("AzanService", "Playback complete, stopping service")
-                restoreSystemVolume()
                 stopSelf()
+            }
+            mediaPlayer?.setOnErrorListener { _, what, extra ->
+                Log.e("AzanService", "MediaPlayer error: $what, $extra")
+                stopSelf()
+                true
             }
         } else {
             Log.e("AzanService", "Resource not found for sound: $soundName")
-            restoreSystemVolume()
             stopSelf()
         }
 
         return START_STICKY
     }
 
-    private fun createNotification(): Notification {
+    private fun createNotification(prayerName: String): Notification {
         val channelId = "azan_service_channel"
         val manager = getSystemService(NotificationManager::class.java)
 
@@ -155,25 +182,21 @@ class AzanService : Service() {
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
             description = "تضمن تشغيل الأذان في الوقت المحدد"
-            setSound(null, null)
+            setSound(null, null) 
             enableVibration(true)
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
         }
-
         manager.createNotificationChannel(channel)
 
-        // Intent to open the app (Full-Screen or just click)
         val mainPageIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra("full_screen_azan", true)
         }
-        
         val contentPendingIntent = PendingIntent.getActivity(
             this, 101, mainPageIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Stop button intent
         val stopIntent = Intent(this, AzanService::class.java).apply {
             action = "STOP_AZAN"
         }
@@ -184,7 +207,7 @@ class AzanService : Service() {
 
         return NotificationCompat.Builder(this, channelId)
             .setContentTitle("حان الآن موعد الصلاة")
-            .setContentText("جاري تشغيل الأذان...")
+            .setContentText("الأذان: $prayerName (جاري التشغيل)")
             .setSmallIcon(R.mipmap.ic_launcher)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
@@ -193,15 +216,18 @@ class AzanService : Service() {
             .setAutoCancel(false)
             .setContentIntent(contentPendingIntent)
             .setFullScreenIntent(contentPendingIntent, true)
-            .setStyle(NotificationCompat.BigTextStyle().bigText("حان الآن موعد الصلاة - جاري تشغيل الأذان"))
+            .setStyle(NotificationCompat.BigTextStyle().bigText("حان الآن موعد الصلاة - جاري تشغيل الأذان ($prayerName)"))
             .addAction(android.R.drawable.ic_notification_clear_all, "إيقاف الأذان", stopPendingIntent)
             .build()
     }
 
     override fun onDestroy() {
-        Log.d("AzanService", "AzanService destroyed")
+        Log.d("AzanService", "AzanService destroying")
         restoreSystemVolume()
+        abandonAudioFocus()
+        mediaPlayer?.stop()
         mediaPlayer?.release()
+        mediaPlayer = null
         if (wakeLock?.isHeld == true) {
             wakeLock?.release()
         }

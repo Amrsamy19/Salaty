@@ -14,22 +14,23 @@ import androidx.core.app.NotificationCompat
 
 class AzanReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val pendingResult = goAsync() // Tell Android "I need more time"
+        val pendingResult = goAsync() 
 
         try {
             val soundName = intent.getStringExtra("sound") ?: "makah"
             val prayerName = intent.getStringExtra("prayerName") ?: "الصلاة"
             val volume = intent.getFloatExtra("volume", 1.0f)
 
-            // Keep CPU awake briefly so we can post notification + start service reliably.
+            // 1. Acquire WakeLock briefly to ensure service starts
             val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
             val wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Salaty:AzanReceiverWake")
-            wl.acquire(60_000L)
+            wl.acquire(30_000L)
 
             try {
-                // Fallback that works even if FGS start is restricted: play azan as notification sound.
-                // (Channel sound is required; per-sound channels avoid channel-sound immutability issues.)
-                postAzanAlarmNotification(context, soundName, prayerName)
+                // Post the notification IMMEDIATELY from the receiver.
+                // This gives the user instant feedback and satisfies the visually immediate requirement for alarms.
+                // We use ID 1001 so the AzanService can "adopt" it via startForeground.
+                showPlaceholderNotification(context, prayerName)
 
                 val serviceIntent = Intent(context, AzanService::class.java).apply {
                     putExtra("sound", soundName)
@@ -50,33 +51,36 @@ class AzanReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun postAzanAlarmNotification(context: Context, soundName: String, prayerName: String) {
+    /**
+     * Shows a notification that AzanService will later promote to a foreground service notification.
+     * Uses ID 1001 and azan_service_channel (which is silent).
+     */
+    private fun showPlaceholderNotification(context: Context, prayerName: String) {
         try {
-            val manager = context.getSystemService(NotificationManager::class.java)
-            val channelId = "azan_alarm_${soundName}_v1"
+            val manager = context.getSystemService(Context.NOTIFICATION_MANAGER_SERVICE) as NotificationManager
+            val channelId = "azan_service_channel"
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val resId = context.resources.getIdentifier(soundName, "raw", context.packageName)
-                val soundUri = if (resId != 0) {
-                    android.net.Uri.parse("android.resource://${context.packageName}/$resId")
-                } else null
-
-                val attrs = AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ALARM)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                    .build()
-
                 val existing = manager.getNotificationChannel(channelId)
                 if (existing == null) {
-                    val ch = NotificationChannel(channelId, "Azan Alarm ($soundName)", NotificationManager.IMPORTANCE_HIGH).apply {
-                        description = "Azan alarm fallback notification sound"
-                        setSound(soundUri, attrs)
+                    val ch = NotificationChannel(channelId, "Azan Service", NotificationManager.IMPORTANCE_HIGH).apply {
+                        description = "تنبيهات الأذان"
+                        setSound(null, null) // Silent channel; AzanService plays via MediaPlayer
                         enableVibration(true)
-                        lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                        lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
                     }
                     manager.createNotificationChannel(ch)
                 }
             }
+
+            // Simple intent to open app
+            val mainIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val contentIntent = PendingIntent.getActivity(
+                context, 101, mainIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
 
             val notif = NotificationCompat.Builder(context, channelId)
                 .setSmallIcon(R.mipmap.ic_launcher)
@@ -85,14 +89,13 @@ class AzanReceiver : BroadcastReceiver() {
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                .setAutoCancel(true)
+                .setOngoing(true) 
+                .setContentIntent(contentIntent)
                 .build()
 
-            // Use a stable ID per prayer name so notifications don't pile up.
-            val id = ("azan_alarm_" + prayerName).hashCode()
-            manager.notify(id, notif)
+            manager.notify(1001, notif)
         } catch (e: Exception) {
-            Log.w("AzanReceiver", "Failed posting azan alarm notification: $e")
+            Log.w("AzanReceiver", "Failed posting placeholder: $e")
         }
     }
 }
