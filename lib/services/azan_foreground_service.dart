@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:volume_controller/volume_controller.dart';
+import 'package:adhan/adhan.dart';
 
 class AzanForegroundHandler extends TaskHandler {
   AudioPlayer? _audioPlayer;
@@ -150,39 +151,67 @@ class NextPrayerCountdownHandler extends TaskHandler {
   }
 
   Future<void> _updateCountdown() async {
-    final int? nextPrayerTimeMs =
-        await FlutterForegroundTask.getData<int>(key: 'nextPrayerTimeMs');
-    final String? nextPrayerName =
-        await FlutterForegroundTask.getData<String>(key: 'nextPrayerName');
+    final double? lat = await FlutterForegroundTask.getData<double>(key: 'lat');
+    final double? lng = await FlutterForegroundTask.getData<double>(key: 'lng');
 
-    if (nextPrayerTimeMs == null ||
-        nextPrayerName == null ||
-        nextPrayerTimeMs <= 0 ||
-        nextPrayerName.trim().isEmpty) {
+    if (lat == null || lng == null || lat == 999.0 || lng == 999.0) {
       await FlutterForegroundTask.updateService(
         notificationText: 'افتح التطبيق لتحديث مواقيت الصلاة',
       );
       return;
     }
 
-    final now = DateTime.now().millisecondsSinceEpoch;
-    final diff = nextPrayerTimeMs - now;
+    final coordinates = Coordinates(lat, lng);
+    final params = CalculationMethod.egyptian.getParameters();
+    params.madhab = Madhab.shafi;
+    
+    PrayerTimes prayerTimes = PrayerTimes.today(coordinates, params);
+    Prayer next = prayerTimes.nextPrayer();
+    DateTime? nextTime;
+    String name = 'الصلاة';
 
-    if (diff <= 0) {
+    if (next == Prayer.none) {
+      final tomorrow = DateTime.now().add(const Duration(days: 1));
+      final tomorrowTimes = PrayerTimes(
+        coordinates,
+        DateComponents.from(tomorrow),
+        params,
+      );
+      nextTime = tomorrowTimes.fajr;
+      name = 'الفجر';
+    } else {
+      nextTime = prayerTimes.timeForPrayer(next);
+      final Map<Prayer, String> names = {
+        Prayer.fajr: 'الفجر',
+        Prayer.dhuhr: 'الظهر',
+        Prayer.asr: 'العصر',
+        Prayer.maghrib: 'المغرب',
+        Prayer.isha: 'العشاء',
+        Prayer.sunrise: 'الشروق',
+      };
+      name = names[next] ?? 'الصلاة';
+    }
+
+    if (nextTime == null) return;
+
+    final now = DateTime.now();
+    final diff = nextTime.difference(now);
+
+    if (diff.isNegative || diff.inSeconds <= 0) {
       await FlutterForegroundTask.updateService(
-        notificationTitle: 'حان الآن موعد الصلاة',
+        notificationTitle: 'حان الآن موعد صلاة $name',
         notificationText: 'جاري الانتظار للتحديث...',
       );
       return;
     }
 
-    final totalMinutes = (diff / 60000).floor();
+    final totalMinutes = diff.inMinutes;
     final hours = totalMinutes ~/ 60;
     final minutes = totalMinutes % 60;
     final countdown = hours > 0 ? '$hoursس $minutesد' : '$minutesد';
 
     await FlutterForegroundTask.updateService(
-      notificationTitle: 'الصلاة القادمة: $nextPrayerName',
+      notificationTitle: 'الصلاة القادمة: $name',
       notificationText: 'متبقي: $countdown',
     );
   }
@@ -213,19 +242,19 @@ class NextPrayerCountdownService {
   }
 
   static Future<void> startOrUpdate({
-    required int nextPrayerTimeMs,
-    required String nextPrayerName,
+    required double lat,
+    required double lng,
     bool autoRunOnBoot = false,
   }) async {
     init(autoRunOnBoot: autoRunOnBoot);
 
     await FlutterForegroundTask.saveData(
-      key: 'nextPrayerTimeMs',
-      value: nextPrayerTimeMs,
+      key: 'lat',
+      value: lat,
     );
     await FlutterForegroundTask.saveData(
-      key: 'nextPrayerName',
-      value: nextPrayerName,
+      key: 'lng',
+      value: lng,
     );
 
     if (await FlutterForegroundTask.isRunningService) {
@@ -245,8 +274,9 @@ class NextPrayerCountdownService {
   static Future<void> startPlaceholder({bool autoRunOnBoot = false}) async {
     init(autoRunOnBoot: autoRunOnBoot);
 
-    await FlutterForegroundTask.saveData(key: 'nextPrayerTimeMs', value: 0);
-    await FlutterForegroundTask.saveData(key: 'nextPrayerName', value: '');
+    // Placeholder clear
+    await FlutterForegroundTask.saveData(key: 'lat', value: 999.0);
+    await FlutterForegroundTask.saveData(key: 'lng', value: 999.0);
 
     if (await FlutterForegroundTask.isRunningService) {
       await FlutterForegroundTask.updateService(callback: nextPrayerStartCallback);

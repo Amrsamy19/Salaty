@@ -295,26 +295,9 @@ class PrayerProvider with ChangeNotifier {
     await NextPrayerCountdownService.startPlaceholder(autoRunOnBoot: false);
     if (_prayerTimes == null) return;
 
-    final next = _prayerTimes!.nextPrayer();
-    if (next == Prayer.none) return;
-    final time = _prayerTimes!.timeForPrayer(next);
-    if (time == null) return;
-
-    // Use Arabic names to match UI.
-    final Map<Prayer, String> names = {
-      Prayer.fajr: 'الفجر',
-      Prayer.dhuhr: 'الظهر',
-      Prayer.asr: 'العصر',
-      Prayer.maghrib: 'المغرب',
-      Prayer.isha: 'العشاء',
-      Prayer.sunrise: 'الشروق',
-    };
-    final name = names[next] ?? 'الصلاة';
-
     await NextPrayerCountdownService.startOrUpdate(
-      nextPrayerTimeMs: time.millisecondsSinceEpoch,
-      nextPrayerName: name,
-      // Keep conservative: don't auto-run on boot unless you want it.
+      lat: _lastLatitude!,
+      lng: _lastLongitude!,
       autoRunOnBoot: false,
     );
   }
