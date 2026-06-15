@@ -3,6 +3,7 @@ package com.example.salaty_v1
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -24,7 +25,8 @@ class AzanReceiver : BroadcastReceiver() {
             // 1. Acquire WakeLock briefly to ensure service starts
             val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
             val wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Salaty:AzanReceiverWake")
-            wl.acquire(30_000L)
+            // Acquire wake lock for 10 seconds to give AzanService time to start and acquire its own
+            wl.acquire(10_000L)
 
             try {
                 // Post the notification IMMEDIATELY from the receiver.
@@ -43,7 +45,8 @@ class AzanReceiver : BroadcastReceiver() {
                 } else {
                     context.startService(serviceIntent)
                 }
-            } finally {
+            } catch (e: Exception) {
+                Log.e("AzanReceiver", "Error starting AzanService: $e")
                 if (wl.isHeld) wl.release()
             }
         } finally {
@@ -57,7 +60,7 @@ class AzanReceiver : BroadcastReceiver() {
      */
     private fun showPlaceholderNotification(context: Context, prayerName: String) {
         try {
-            val manager = context.getSystemService(Context.NOTIFICATION_MANAGER_SERVICE) as NotificationManager
+            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             val channelId = "azan_service_channel"
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

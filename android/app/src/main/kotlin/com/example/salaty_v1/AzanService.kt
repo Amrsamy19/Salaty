@@ -144,16 +144,24 @@ class AzanService : Service() {
 
         val resId = resources.getIdentifier(soundName, "raw", packageName)
         if (resId != 0) {
-            mediaPlayer = MediaPlayer.create(this, resId)
             val audioAttributes = AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_ALARM)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                 .build()
-            
-            mediaPlayer?.setAudioAttributes(audioAttributes)
-            mediaPlayer?.setVolume(resolvedVolume, resolvedVolume)
-            mediaPlayer?.isLooping = false
-            mediaPlayer?.start()
+
+            mediaPlayer = MediaPlayer().apply {
+                setAudioAttributes(audioAttributes)
+                setVolume(resolvedVolume, resolvedVolume)
+                isLooping = false
+                
+                val afd = resources.openRawResourceFd(resId)
+                if (afd != null) {
+                    setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+                    afd.close()
+                    prepare()
+                    start()
+                }
+            }
 
             mediaPlayer?.setOnCompletionListener {
                 Log.d("AzanService", "Playback complete, stopping service")

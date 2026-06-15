@@ -23,6 +23,8 @@ class PrayerProvider with ChangeNotifier {
   List<TrackerModel> _history = [];
   bool _isLoading = false;
   Locale _locale = const Locale('ar');
+  double? _lastLatitude;
+  double? _lastLongitude;
 
   int _currentStreak = 0;
   int _longestStreak = 0;
@@ -117,9 +119,17 @@ class PrayerProvider with ChangeNotifier {
       await checkPermissions();
       await loadSettings();
       await _notificationService.setNativeAzanVolume(_azanVolume);
-      await refreshPrayerTimes();
-      await _syncNextPrayerCountdownService();
-      await loadTracker();
+      
+      if (_lastLatitude != null && _lastLongitude != null) {
+        _prayerTimes = _prayerService.getPrayerTimes(_lastLatitude!, _lastLongitude!);
+        refreshPrayerTimes(); // Background refresh
+        await _syncNextPrayerCountdownService();
+        await loadTracker();
+      } else {
+        await refreshPrayerTimes();
+        await _syncNextPrayerCountdownService();
+        await loadTracker();
+      }
     } catch (e, st) {
       errorMessage = "$e\n$st";
       debugPrint(errorMessage);
@@ -170,6 +180,10 @@ class PrayerProvider with ChangeNotifier {
       if (settings['locale'] != null) {
         _locale = Locale(settings['locale']);
       }
+      if (settings['lastLatitude'] != null && settings['lastLongitude'] != null) {
+        _lastLatitude = settings['lastLatitude'];
+        _lastLongitude = settings['lastLongitude'];
+      }
     }
   }
 
@@ -182,6 +196,8 @@ class PrayerProvider with ChangeNotifier {
       'notifMap': _notifMap,
       'primaryColor': _primaryColor.toARGB32(),
       'locale': _locale.languageCode,
+      'lastLatitude': _lastLatitude,
+      'lastLongitude': _lastLongitude,
     });
     
     await _notificationService.setNativeAzanVolume(_azanVolume);
@@ -241,18 +257,30 @@ class PrayerProvider with ChangeNotifier {
   Future<void> refreshPrayerTimes() async {
     _detectSeason();
     _currentPosition = await _locationService.getCurrentLocation();
+    
     if (_currentPosition != null) {
-      _prayerTimes = _prayerService.getPrayerTimes(
-        _currentPosition!.latitude,
-        _currentPosition!.longitude,
-      );
-      await _notificationService.schedulePrayerNotifications(
-        prayerTimes: _prayerTimes!,
-        azanSound: _selectedAzanSound,
-        azanVolume: _azanVolume,
-        enabledPrayers: _notifMap,
-      );
+      _lastLatitude = _currentPosition!.latitude;
+      _lastLongitude = _currentPosition!.longitude;
     }
+
+    if (_lastLatitude != null && _lastLongitude != null) {
+      _prayerTimes = _prayerService.getPrayerTimes(
+        _lastLatitude!,
+        _lastLongitude!,
+      );
+      
+      if (_currentPosition != null) {
+        await saveSettings();
+      } else {
+        await _notificationService.schedulePrayerNotifications(
+          prayerTimes: _prayerTimes!,
+          azanSound: _selectedAzanSound,
+          azanVolume: _azanVolume,
+          enabledPrayers: _notifMap,
+        );
+      }
+    }
+
     await _syncNextPrayerCountdownService();
     notifyListeners();
   }
