@@ -441,7 +441,7 @@ class PrayerProvider with ChangeNotifier {
   }
 
   Duration? get timeUntilNextPrayer {
-    if (_prayerTimes == null || _currentPosition == null) return null;
+    if (_prayerTimes == null || _lastLatitude == null || _lastLongitude == null) return null;
     
     final next = nextPrayer;
     if (next != Prayer.none) {
@@ -452,7 +452,7 @@ class PrayerProvider with ChangeNotifier {
       // It's past Isha, let's get tomorrow's Fajr
       final tomorrow = DateTime.now().add(const Duration(days: 1));
       final tomorrowPrayerTimes = PrayerTimes(
-        Coordinates(_currentPosition!.latitude, _currentPosition!.longitude),
+        Coordinates(_lastLatitude!, _lastLongitude!),
         DateComponents.from(tomorrow),
         CalculationMethod.muslim_world_league.getParameters(),
       );

@@ -225,34 +225,20 @@ class _HomeScreenState extends State<HomeScreen> {
   ) {
     final nextPrayer = provider.nextPrayer;
     final l = AppLocalizations.of(context);
+    
+    // Determine the actual next prayer name, handling the midnight rollover (after Isha -> tomorrow Fajr)
+    final effectiveNextPrayer = nextPrayer == Prayer.none ? Prayer.fajr : nextPrayer;
     final nextPrayerName = provider.prayerTimes != null
-        ? l.prayerName(_getPrayerName(nextPrayer))
+        ? l.prayerName(_getPrayerName(effectiveNextPrayer))
         : '...';
 
     // Countdown logic
     String countdownStr = "--:--:--";
-    if (provider.prayerTimes != null) {
-      DateTime? nextTime;
-      if (nextPrayer != Prayer.none) {
-        nextTime = provider.prayerTimes!.timeForPrayer(nextPrayer);
-      } else if (provider.currentPosition != null) {
-        final tomorrow = DateTime.now().add(const Duration(days: 1));
-        final tomorrowPT = PrayerTimes(
-          Coordinates(
-            provider.currentPosition!.latitude,
-            provider.currentPosition!.longitude,
-          ),
-          DateComponents.from(tomorrow),
-          CalculationMethod.muslim_world_league.getParameters(),
-        );
-        nextTime = tomorrowPT.fajr;
-      }
-      if (nextTime != null) {
-        final diff = nextTime.difference(DateTime.now());
-        String twoDigits(int n) => n.abs().toString().padLeft(2, '0');
-        countdownStr =
-            '${twoDigits(diff.inHours)}:${twoDigits(diff.inMinutes.remainder(60))}:${twoDigits(diff.inSeconds.remainder(60))}';
-      }
+    final diff = provider.timeUntilNextPrayer;
+    if (diff != null) {
+      String twoDigits(int n) => n.abs().toString().padLeft(2, '0');
+      countdownStr =
+          '${twoDigits(diff.inHours)}:${twoDigits(diff.inMinutes.remainder(60))}:${twoDigits(diff.inSeconds.remainder(60))}';
     }
 
     final hijri = HijriCalendar.now();
